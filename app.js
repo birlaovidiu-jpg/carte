@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '2';
+export const VERSIONE = '3';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -309,10 +309,10 @@ function caricaZXing() {
   if (zx) return zx;
   zx = new Promise((ok, no) => {
     const s = document.createElement('script');
-    s.src = 'lib/zxing.js?v=2';
+    s.src = 'lib/zxing.js?v=3';
     s.onload = () => {
       ZXingWASM.prepareZXingModule({
-        overrides: { locateFile: (p, prefix) => p.endsWith('.wasm') ? new URL('lib/zxing_full.wasm?v=2', location.href).href : prefix + p },
+        overrides: { locateFile: (p, prefix) => p.endsWith('.wasm') ? new URL('lib/zxing_full.wasm?v=3', location.href).href : prefix + p },
         fireImmediately: true
       }).then(() => ok(ZXingWASM), no);
     };

@@ -1,4 +1,4 @@
-# Le mie carte
+# Carte
 
 Carte fedeltà dei negozi sul telefono: codice a barre e punti.
 
