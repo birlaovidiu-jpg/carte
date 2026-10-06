@@ -1,32 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
-// Le carte stanno su Firebase (utenti/{uid}/carte) e si aggiornano in tempo reale su tutti i telefoni.
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getAuth, connectAuthEmulator, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
-  from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { initializeFirestore, connectFirestoreEmulator, persistentLocalCache, persistentMultipleTabManager,
-         collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, increment }
-  from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
-import { FIREBASE } from './config.js?v=1';
-
-export const VERSIONE = '1';
-
-// ---------- Collegamento ----------
-// Sul Mac (localhost) il programma usa il simulatore di Firebase, per le prove.
-const PROVA = ['localhost', '127.0.0.1'].includes(location.hostname);
-const CONFIG = PROVA ? { apiKey: 'prova', projectId: 'demo-carte', appId: 'prova' } : FIREBASE;
-const app = initializeApp(CONFIG);
-const auth = getAuth(app);
-// Copia delle carte salvata sul telefono: al negozio il codice a barre si vede anche senza rete.
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-  experimentalForceLongPolling: true
-});
-if (PROVA) {
-  connectAuthEmulator(auth, `http://${location.hostname}:9099`, { disableWarnings: true });
-  connectFirestoreEmulator(db, location.hostname, 8080);
-  document.body.classList.add('prova');
-}
-const DOMINIO = (CONFIG.projectId || 'carte') + '.firebaseapp.com';
+// Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
+export const VERSIONE = '2';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -88,61 +62,32 @@ function disegnoCodice(svg, formato) {
   return s;
 }
 
-// ---------- Accesso ----------
-let creaAccount = false;
-$('accCambia').onclick = () => {
-  creaAccount = !creaAccount;
-  $('accSotto').textContent = creaAccount ? 'Scegli un nome utente e una password' : 'Entra per vedere le tue carte';
-  $('accEntra').textContent = creaAccount ? 'Crea account' : 'Entra';
-  $('accCambia').innerHTML = creaAccount ? 'Hai già un account? <b>Entra</b>' : 'Non hai un account? <b>Creane uno</b>';
-  $('accPassword').autocomplete = creaAccount ? 'new-password' : 'current-password';
-  $('accErrore').textContent = '';
-};
-$('accForm').onsubmit = async e => {
-  e.preventDefault();
-  const utente = $('accUtente').value.trim().toLowerCase();
-  const password = $('accPassword').value;
-  const err = $('accErrore');
-  if (!/^[a-z0-9._-]{3,30}$/.test(utente)) { err.textContent = 'Il nome utente: almeno 3 lettere o numeri, senza spazi'; return; }
-  if (password.length < 6) { err.textContent = 'La password deve avere almeno 6 caratteri'; return; }
-  err.textContent = '';
-  $('accEntra').disabled = true;
-  try {
-    const email = `${utente}@${DOMINIO}`;
-    if (creaAccount) await createUserWithEmailAndPassword(auth, email, password);
-    else await signInWithEmailAndPassword(auth, email, password);
-  } catch (x) {
-    const c = x.code || '';
-    err.textContent =
-      c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found') ? 'Nome utente o password sbagliati' :
-      c.includes('email-already-in-use') ? 'Questo nome utente esiste già: scegline un altro' :
-      c.includes('weak-password') ? 'La password deve avere almeno 6 caratteri' :
-      c.includes('too-many-requests') ? 'Troppi tentativi: riprova tra qualche minuto' :
-      c.includes('network') ? 'Manca la connessione a Internet' : 'Non è andata: ' + (x.message || c);
-  } finally { $('accEntra').disabled = false; }
-};
-
-// ---------- Le carte in tempo reale ----------
-let uid = null, smetti = null;
+// ---------- Le carte, salvate sul telefono ----------
+const CHIAVE = 'carte';
 const carte = new Map();          // id → dati della carta
 const elementi = new Map();       // id → elemento nella griglia
 
-onAuthStateChanged(auth, u => {
-  if (smetti) { smetti(); smetti = null; }
-  carte.clear(); elementi.clear(); $('griglia').innerHTML = '';
-  uid = u ? u.uid : null;
-  $('accesso').hidden = !!u;
-  $('app').hidden = !u;
-  if (!u) return;
-  $('menuChi').textContent = 'Entrato come ' + (u.email || '').split('@')[0];
-  const q = query(collection(db, 'utenti', uid, 'carte'), orderBy('ordine'));
-  smetti = onSnapshot(q, snap => {
-    const visti = new Set();
-    snap.docs.forEach(d => { visti.add(d.id); carte.set(d.id, { id: d.id, ...d.data() }); });
-    for (const id of [...carte.keys()]) if (!visti.has(id)) carte.delete(id);
-    disegna(snap.docs.map(d => d.id));
-  }, e => avviso('Errore del database: ' + e.code));
-});
+function leggiCarte() {
+  let lista = [];
+  try { lista = JSON.parse(localStorage.getItem(CHIAVE) || '[]'); } catch (_) {}
+  carte.clear();
+  lista.sort((x, y) => x.ordine - y.ordine).forEach(c => carte.set(c.id, c));
+  disegna([...carte.keys()]);
+}
+function salvaCarte() {
+  try { localStorage.setItem(CHIAVE, JSON.stringify([...carte.values()])); }
+  catch (_) { avviso('Non riesco a salvare: memoria del telefono piena'); }
+  disegna([...carte.keys()]);
+}
+function aggiungiCarta(c) { carte.set(c.id, c); salvaCarte(); }
+function cambiaCarta(id, campi) { const c = carte.get(id); if (!c) return; Object.assign(c, campi); salvaCarte(); }
+function eliminaCarta(id) { carte.delete(id); salvaCarte(); }
+const nuovoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+// Se l'app è aperta in due finestre, l'altra si aggiorna subito
+addEventListener('storage', e => { if (e.key === CHIAVE) leggiCarte(); });
+// Chiede al telefono di non cancellare mai le carte per fare spazio
+navigator.storage?.persist?.().catch(() => {});
 
 function htmlCarta(c) {
   const a = aspetto(c);
@@ -315,9 +260,7 @@ function chiediPunti(id, segno) {
     const scuoti = () => { campo.classList.remove('scuoti'); void campo.offsetWidth; campo.classList.add('scuoti'); };
     if (!n) return scuoti();
     if (segno < 0 && n > ora) { scuoti(); avviso(`Sulla carta ci sono solo ${numero(ora)} punti`); return; }
-    // increment: anche se due telefoni cambiano i punti insieme, il conto torna giusto
-    updateDoc(doc(db, 'utenti', uid, 'carte', id), { punti: increment(segno * n) })
-      .catch(x => avviso('Punti non salvati: ' + (x.code || x.message)));
+        cambiaCarta(id, { punti: ora + segno * n });
     chiudiFoglio();
     avviso(`${segno > 0 ? '+' : '−'}${numero(n)} punti`);
   };
@@ -326,7 +269,6 @@ function chiediPunti(id, segno) {
 // ---------- Menu ----------
 $('bMenu').onclick = e => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; };
 document.addEventListener('click', e => { if (!$('menu').hidden && !$('menu').contains(e.target)) $('menu').hidden = true; });
-$('mEsci').onclick = () => { $('menu').hidden = true; signOut(auth); };
 
 // ---------- Eliminare una carta ----------
 let modoElimina = false;
@@ -348,14 +290,14 @@ function chiediElimina(id) {
   const a = aspetto(c);
   apriFoglio(`
     <h2>Eliminare «${esc(a.nome)}»?</h2>
-    <p class="sotto">La carta, il codice a barre e i punti vengono cancellati da tutti i tuoi telefoni.</p>
+    <p class="sotto">La carta, il codice a barre e i punti vengono cancellati.</p>
     <div class="bottoni">
       <button class="btn rosso" id="fElimina">Elimina la carta</button>
       <button class="btn" id="fAnnulla">Annulla</button>
     </div>`);
   $('fAnnulla').onclick = chiudiFoglio;
   $('fElimina').onclick = () => {
-    deleteDoc(doc(db, 'utenti', uid, 'carte', id)).catch(x => avviso('Non eliminata: ' + (x.code || x.message)));
+    eliminaCarta(id);
     chiudiFoglio();
     avviso(`«${a.nome}» eliminata`);
   };
@@ -367,10 +309,10 @@ function caricaZXing() {
   if (zx) return zx;
   zx = new Promise((ok, no) => {
     const s = document.createElement('script');
-    s.src = 'lib/zxing.js?v=1';
+    s.src = 'lib/zxing.js?v=2';
     s.onload = () => {
       ZXingWASM.prepareZXingModule({
-        overrides: { locateFile: (p, prefix) => p.endsWith('.wasm') ? new URL('lib/zxing_full.wasm?v=1', location.href).href : prefix + p },
+        overrides: { locateFile: (p, prefix) => p.endsWith('.wasm') ? new URL('lib/zxing_full.wasm?v=2', location.href).href : prefix + p },
         fireImmediately: true
       }).then(() => ok(ZXingWASM), no);
     };
@@ -478,10 +420,9 @@ async function trovato(Z, r) {
   const doppia = [...carte.values()].find(c => c.codice === codice);
   if (doppia) { avviso('Questa carta c\'è già'); apriCarta(doppia.id); return; }
   // Si salva subito; poi si sceglie il negozio
-  const rif = doc(collection(db, 'utenti', uid, 'carte'));
-  setDoc(rif, { negozio: null, nome: '', codice, formato, svg: out.svg, punti: 0, ordine: Date.now() })
-    .catch(x => avviso('Carta non salvata: ' + (x.code || x.message)));
-  scegliNegozio(rif.id, codice);
+  const id = nuovoId();
+  aggiungiCarta({ id, negozio: null, nome: '', codice, formato, svg: out.svg, punti: 0, ordine: Date.now() });
+  scegliNegozio(id, codice);
 }
 
 function scegliNegozio(id, codice) {
@@ -496,9 +437,8 @@ function scegliNegozio(id, codice) {
       <input class="campo-testo" id="nNome" placeholder="Nome del negozio" maxlength="40" autocomplete="off">
       <button class="btn primario" type="submit">Salva</button>
     </form>`);
-  const rif = doc(db, 'utenti', uid, 'carte', id);
   $('foglioDentro').querySelectorAll('.negozio[data-k]').forEach(b => b.onclick = () => {
-    updateDoc(rif, { negozio: b.dataset.k, nome: NEGOZI[b.dataset.k].nome }).catch(() => {});
+    cambiaCarta(id, { negozio: b.dataset.k, nome: NEGOZI[b.dataset.k].nome });
     chiudiFoglio();
   });
   $('fAltro').onclick = () => { $('fNome').hidden = false; $('nNome').focus(); };
@@ -506,12 +446,13 @@ function scegliNegozio(id, codice) {
     e.preventDefault();
     const nome = $('nNome').value.trim();
     if (!nome) return $('nNome').focus();
-    updateDoc(rif, { negozio: null, nome }).catch(() => {});
+    cambiaCarta(id, { negozio: null, nome });
     chiudiFoglio();
   };
 }
 
 // ---------- Installabile sul telefono + aggiornamenti ----------
+const PROVA = ['localhost', '127.0.0.1'].includes(location.hostname);
 if ('serviceWorker' in navigator && !PROVA) navigator.serviceWorker.register('sw.js').catch(() => {});
 (async () => {
   try {
@@ -525,4 +466,6 @@ if ('serviceWorker' in navigator && !PROVA) navigator.serviceWorker.register('sw
 })();
 
 // Per le prove
-window.__carte = { carte, NEGOZI, db, auth };
+window.__carte = { carte, NEGOZI, aggiungiCarta };
+
+leggiCarte();

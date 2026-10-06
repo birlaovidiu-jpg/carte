@@ -13,28 +13,12 @@
 <link rel="icon" href="icona-192.png">
 <link rel="manifest" href="manifest.json">
 <title>Le mie carte</title>
-<link rel="stylesheet" href="stile.css?v=1">
+<link rel="stylesheet" href="stile.css?v=2">
 </head>
 <body>
 
-<!-- Accesso -->
-<section id="accesso" hidden>
-  <div class="acc-box">
-    <img class="acc-icona" src="icona-192.png" alt="">
-    <h1>Le mie carte</h1>
-    <p class="acc-sotto" id="accSotto">Entra per vedere le tue carte</p>
-    <form id="accForm" autocomplete="on">
-      <input id="accUtente" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Nome utente" required>
-      <input id="accPassword" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
-      <p class="acc-errore" id="accErrore"></p>
-      <button class="btn primario largo" id="accEntra" type="submit">Entra</button>
-    </form>
-    <button class="link" id="accCambia" type="button">Non hai un account? <b>Creane uno</b></button>
-  </div>
-</section>
-
 <!-- Le carte -->
-<main id="app" hidden>
+<main id="app">
   <header class="testa">
     <div>
       <h1>Carte</h1>
@@ -67,9 +51,7 @@
 
 <!-- Menu -->
 <div class="menu" id="menu" hidden>
-  <p class="menu-chi" id="menuChi"></p>
   <button id="mElimina"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>Elimina una carta</button>
-  <button id="mEsci"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Esci</button>
 </div>
 
 <!-- Carta aperta (girata, grande) -->
@@ -98,6 +80,6 @@
 
 <div class="avviso" id="avviso"></div>
 
-<script type="module" src="app.js?v=1"></script>
+<script type="module" src="app.js?v=2"></script>
 </body>
 </html>

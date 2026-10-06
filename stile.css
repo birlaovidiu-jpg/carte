@@ -70,20 +70,6 @@ svg { display: block; }
 .tondo.pieno svg, .tondo.scuro svg { fill: none; stroke-width: 2.4; stroke-linecap: round; }
 .tondo.scuro { background: rgba(0,0,0,.45); color: #fff; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 
-/* ---------- Accesso ---------- */
-#accesso { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px 20px calc(24px + var(--sicuro-giu)); }
-.acc-box { width: 100%; max-width: 360px; text-align: center; }
-.acc-icona { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 10px 30px -10px rgba(0,0,0,.4); }
-.acc-box h1 { font-size: 30px; letter-spacing: -.02em; margin: 18px 0 4px; }
-.acc-sotto { color: var(--tenue); margin: 0 0 26px; }
-#accForm { display: grid; gap: 10px; }
-#accForm input {
-  height: 52px; border-radius: 14px; border: 1px solid var(--linea);
-  background: var(--pannello); color: var(--testo); padding: 0 16px; font-size: 17px; outline: none;
-}
-#accForm input:focus { border-color: var(--tenue); }
-.acc-errore { color: var(--rosso); font-size: 14px; min-height: 18px; margin: 2px 0; }
-
 /* ---------- Testata ---------- */
 #app { padding: calc(10px + var(--sicuro-su)) 16px calc(40px + var(--sicuro-giu)); max-width: 720px; margin: 0 auto; }
 .testa { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 2px 16px; }
@@ -198,7 +184,6 @@ svg { display: block; }
   transform-origin: top right; animation: apri-menu .2s var(--morbido);
 }
 @keyframes apri-menu { from { opacity: 0; transform: scale(.9); } }
-.menu-chi { margin: 0; padding: 8px 12px 6px; font-size: 13px; color: var(--tenue); }
 .menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border-radius: 10px; font-size: 16px; text-align: left; }
 .menu button:active { background: var(--linea); }
 .menu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -270,12 +255,12 @@ svg { display: block; }
 .negozio {
   container-type: inline-size; aspect-ratio: 1.586; border-radius: 9px;
   background: var(--bg); color: var(--fg); position: relative; overflow: hidden;
-  display: flex; align-items: flex-end; padding: 0 8cqw 8cqw;
+  display: flex; align-items: flex-end; padding: 0 9px 9px;
   box-shadow: 0 4px 12px -6px rgba(0,0,0,.35), inset 0 0 0 1px rgba(0,0,0,.05);
   transition: transform .15s;
 }
 .negozio:active { transform: scale(.94); }
-.negozio span { font-size: 16px; line-height: 1; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: .08em; }
+.negozio span { font-size: 13px; line-height: 1; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: .08em; }
 .negozio.altro { background: var(--sfondo); color: var(--testo); align-items: center; justify-content: center; padding: 0; box-shadow: inset 0 0 0 1.5px var(--linea); }
 .negozio.altro span { font-weight: 600; font-size: 15px; }
 
@@ -324,9 +309,3 @@ svg { display: block; }
   transition: opacity .25s, transform .35s var(--morbido);
 }
 .avviso.su { opacity: 1; transform: translate(-50%, 0); }
-
-/* ---------- Simulatore (solo sul Mac) ---------- */
-.prova::after {
-  content: "PROVA — simulatore"; position: fixed; z-index: 99; left: 50%; top: 0; transform: translateX(-50%);
-  background: #ff9f0a; color: #000; font: 700 11px/1 -apple-system, sans-serif; padding: 4px 10px; border-radius: 0 0 8px 8px;
-}
