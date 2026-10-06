@@ -1,0 +1,15 @@
+{
+  "name": "Le mie carte",
+  "short_name": "Carte",
+  "description": "Le carte fedeltà dei negozi con codice a barre e punti",
+  "display": "standalone",
+  "scope": "./",
+  "start_url": "./index.html",
+  "background_color": "#f2f2f7",
+  "theme_color": "#f2f2f7",
+  "icons": [
+    { "src": "icona-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icona-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

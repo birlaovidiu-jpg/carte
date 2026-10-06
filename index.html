@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Carte">
+<link rel="apple-touch-icon" href="icona-180.png">
+<link rel="icon" href="icona-192.png">
+<link rel="manifest" href="manifest.json">
+<title>Le mie carte</title>
+<link rel="stylesheet" href="stile.css?v=1">
+</head>
+<body>
+
+<!-- Accesso -->
+<section id="accesso" hidden>
+  <div class="acc-box">
+    <img class="acc-icona" src="icona-192.png" alt="">
+    <h1>Le mie carte</h1>
+    <p class="acc-sotto" id="accSotto">Entra per vedere le tue carte</p>
+    <form id="accForm" autocomplete="on">
+      <input id="accUtente" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Nome utente" required>
+      <input id="accPassword" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
+      <p class="acc-errore" id="accErrore"></p>
+      <button class="btn primario largo" id="accEntra" type="submit">Entra</button>
+    </form>
+    <button class="link" id="accCambia" type="button">Non hai un account? <b>Creane uno</b></button>
+  </div>
+</section>
+
+<!-- Le carte -->
+<main id="app" hidden>
+  <header class="testa">
+    <div>
+      <h1>Carte</h1>
+      <p class="conta" id="conta"></p>
+    </div>
+    <div class="testa-azioni">
+      <button class="tondo" id="bMenu" aria-label="Menu">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      </button>
+      <button class="tondo pieno" id="bAggiungi" aria-label="Aggiungi una carta">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="striscia-elimina" id="strisciaElimina" hidden>
+    <span>Tocca la carta da eliminare</span>
+    <button class="btn piccolo" id="bFineElimina">Fine</button>
+  </div>
+
+  <section class="griglia" id="griglia"></section>
+
+  <div class="vuoto" id="vuoto" hidden>
+    <div class="vuoto-carte"><i></i><i></i><i></i></div>
+    <h2>Nessuna carta</h2>
+    <p>Premi <b>+</b> e inquadra il codice a barre della tua carta: si salva da sola.</p>
+    <button class="btn primario" id="bAggiungiVuoto">Aggiungi una carta</button>
+  </div>
+</main>
+
+<!-- Menu -->
+<div class="menu" id="menu" hidden>
+  <p class="menu-chi" id="menuChi"></p>
+  <button id="mElimina"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>Elimina una carta</button>
+  <button id="mEsci"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Esci</button>
+</div>
+
+<!-- Carta aperta (girata, grande) -->
+<div class="velo" id="velo"></div>
+<div class="aperta-azioni" id="apertaAzioni">
+  <button class="btn grande meno" id="bMeno"><span>−</span> Scarica punti</button>
+  <button class="btn grande piu" id="bPiu"><span>+</span> Carica punti</button>
+  <p class="suggerimento">Tocca la carta per chiuderla</p>
+</div>
+
+<!-- Foglio dal basso -->
+<div class="foglio-velo" id="foglioVelo"></div>
+<div class="foglio" id="foglio"><div class="maniglia"></div><div id="foglioDentro"></div></div>
+
+<!-- Fotocamera -->
+<section class="camera" id="camera" hidden>
+  <video id="video" playsinline muted autoplay></video>
+  <div class="mirino" id="mirino"><i></i><i></i><i></i><i></i><div class="laser"></div><div class="fatto">✓</div></div>
+  <div class="cam-testa">
+    <button class="tondo scuro" id="bChiudiCamera" aria-label="Chiudi">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <p class="cam-testo" id="camTesto">Inquadra il codice a barre della carta</p>
+</section>
+
+<div class="avviso" id="avviso"></div>
+
+<script type="module" src="app.js?v=1"></script>
+</body>
+</html>
