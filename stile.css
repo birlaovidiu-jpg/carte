@@ -1,34 +1,30 @@
 :root {
-  --sfondo: #f2f2f7;
-  --pannello: #ffffff;
-  --testo: #111114;
-  --tenue: #6e6e76;
-  --linea: rgba(0,0,0,.08);
-  --pieno: #111114;
-  --su-pieno: #ffffff;
-  --rosso: #e5372f;
-  --verde: #1f9d55;
-  --ombra-carta: 0 1px 2px rgba(0,0,0,.06), 0 10px 24px -10px rgba(0,0,0,.35);
+  /* Sempre scuro: blu notte profondo, con un riflesso caldo come l'oro dell'icona */
+  --sfondo: #0d1018;
+  --pannello: #1a1f2b;
+  --testo: #f3f1ec;
+  --tenue: #9a9fae;
+  --linea: rgba(255,255,255,.1);
+  --pieno: #e9c97a;
+  --su-pieno: #14110a;
+  --rosso: #ff453a;
+  --verde: #30d158;
+  --ombra-carta: 0 0 0 1px rgba(255,255,255,.07), 0 1px 2px rgba(0,0,0,.4), 0 14px 28px -12px rgba(0,0,0,.85);
   --sicuro-su: env(safe-area-inset-top, 0px);
   --sicuro-giu: env(safe-area-inset-bottom, 0px);
   --morbido: cubic-bezier(.2,.8,.2,1);
-  color-scheme: light dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --sfondo: #000000;
-    --pannello: #1c1c1e;
-    --testo: #f5f5f7;
-    --tenue: #98989f;
-    --linea: rgba(255,255,255,.1);
-    --pieno: #f5f5f7;
-    --su-pieno: #000000;
-    --ombra-carta: 0 1px 2px rgba(0,0,0,.4), 0 10px 24px -10px rgba(0,0,0,.8);
-  }
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--sfondo); color: var(--testo); }
+body {
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(233,201,122,.13), transparent 60%),
+    radial-gradient(90% 50% at 100% 100%, rgba(70,90,160,.18), transparent 70%),
+    var(--sfondo);
+  background-attachment: fixed;
+}
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
