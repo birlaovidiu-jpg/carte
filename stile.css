@@ -308,3 +308,19 @@ svg { display: block; }
   transition: opacity .25s, transform .35s var(--morbido);
 }
 .avviso.su { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Impostazioni ---------- */
+.sezione { margin: 18px 0 8px; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--tenue); }
+.foglio .sotto.piccolo { font-size: 14px; margin: 10px 2px 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--sfondo); }
+.seg button { height: 42px; border-radius: 11px; font-weight: 600; font-size: 15px; color: var(--tenue); transition: background .2s, color .2s; }
+.seg button.su { background: var(--pieno); color: var(--su-pieno); }
+.righe { display: grid; gap: 6px; }
+.riga { display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 10px; border-radius: 14px; background: var(--sfondo); min-height: 52px; }
+.pallino { flex: none; width: 30px; height: 20px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+.riga-nome { flex: 1; min-width: 0; font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r-btn { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--tenue); }
+.r-btn:active { background: var(--linea); }
+.r-btn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.r-btn.stella.su { color: var(--pieno); }
+.r-btn.stella.su svg { fill: currentColor; }

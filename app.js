@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '8';
+export const VERSIONE = '9';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -120,6 +120,9 @@ function impronta(c) { return [c.negozio, c.nome, c.codice, c.formato, c.svg?.le
 
 // Le 4 carte più usate stanno in alto, poi una linea, poi tutte le altre nell'ordine in cui sono state aggiunte.
 const IN_ALTO = 4;
+const CH_MODO = 'carte-modo';   // 'auto' = le più usate, 'manuale' = le sceglie lui (carte con «fissa»)
+let modoAlte = 'auto';
+try { if (localStorage.getItem(CH_MODO) === 'manuale') modoAlte = 'manuale'; } catch (_) {}
 let ordineFermo = null;   // mentre una carta è aperta l'ordine non cambia (si riordina alla chiusura)
 function ordineVisuale() {
   const tutte = [...carte.values()];
@@ -128,8 +131,9 @@ function ordineVisuale() {
     const nuove = tutte.filter(c => !ordineFermo.ids.includes(c.id)).sort((x, y) => x.ordine - y.ordine).map(c => c.id);
     return { ids: prima.concat(nuove), alte: Math.min(ordineFermo.alte, prima.length) };
   }
-  const alte = tutte.filter(c => c.uso > 0)
-    .sort((x, y) => (y.uso - x.uso) || ((y.ultimo || 0) - (x.ultimo || 0)))
+  const alte = (modoAlte === 'manuale'
+    ? tutte.filter(c => c.fissa).sort((x, y) => x.fissa - y.fissa)
+    : tutte.filter(c => c.uso > 0).sort((x, y) => (y.uso - x.uso) || ((y.ultimo || 0) - (x.ultimo || 0))))
     .slice(0, IN_ALTO).map(c => c.id);
   const resto = tutte.filter(c => !alte.includes(c.id)).sort((x, y) => x.ordine - y.ordine).map(c => c.id);
   return { ids: alte.concat(resto), alte: alte.length };
@@ -301,6 +305,77 @@ document.addEventListener('click', e => { if (!$('menu').hidden && !$('menu').co
 
 // ---------- Eliminare una carta ----------
 let modoElimina = false;
+// ---------- Impostazioni: le 4 carte in alto e il nome delle carte ----------
+const SVG_MATITA = '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4"/></svg>';
+const SVG_STELLA = '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.8l6.1-.7z"/></svg>';
+$('mImpostazioni').onclick = () => { $('menu').hidden = true; mostraImpostazioni(); };
+function mostraImpostazioni() {
+  const lista = [...carte.values()].sort((x, y) => x.ordine - y.ordine);
+  const man = modoAlte === 'manuale';
+  const nFisse = lista.filter(c => c.fissa).length;
+  const righe = lista.map(c => {
+    const a = aspetto(c);
+    return `<div class="riga" data-id="${c.id}">
+      <span class="pallino" style="background:${a.bg}"></span>
+      <span class="riga-nome">${esc(a.nome)}</span>
+      <button class="r-btn" data-az="rinomina" aria-label="Rinomina ${esc(a.nome)}">${SVG_MATITA}</button>
+      ${man ? `<button class="r-btn stella${c.fissa ? ' su' : ''}" data-az="fissa" aria-label="Fissa in alto ${esc(a.nome)}">${SVG_STELLA}</button>` : ''}
+    </div>`;
+  }).join('');
+  apriFoglio(`
+    <h2>Impostazioni</h2>
+    <p class="sezione">Le carte in alto</p>
+    <div class="seg">
+      <button data-m="auto" class="${man ? '' : 'su'}">Le più usate</button>
+      <button data-m="manuale" class="${man ? 'su' : ''}">Le scelgo io</button>
+    </div>
+    <p class="sotto piccolo">${man
+      ? `Tocca la stella per fissare fino a 4 carte in alto (${nFisse} di ${IN_ALTO}).`
+      : 'In alto ci sono le 4 carte che apri più spesso.'}</p>
+    <p class="sezione">Le tue carte${man ? '' : ' · tocca la matita per rinominare'}</p>
+    <div class="righe">${righe || '<p class="sotto">Non hai ancora nessuna carta.</p>'}</div>
+    <div class="bottoni"><button class="btn primario" id="fFatto">Fatto</button></div>`);
+  $('fFatto').onclick = chiudiFoglio;
+  $('foglioDentro').querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+    modoAlte = b.dataset.m;
+    try { localStorage.setItem(CH_MODO, modoAlte); } catch (_) {}
+    disegna(); mostraImpostazioni();
+  });
+  $('foglioDentro').querySelectorAll('.riga button').forEach(b => b.onclick = () => {
+    const id = b.closest('.riga').dataset.id;
+    if (b.dataset.az === 'rinomina') return rinominaCarta(id);
+    const c = carte.get(id); if (!c) return;
+    if (c.fissa) cambiaCarta(id, { fissa: 0 });
+    else if (nFisse >= IN_ALTO) { avviso(`Sono già ${IN_ALTO}: togline una prima`); return; }
+    else cambiaCarta(id, { fissa: Date.now() });
+    mostraImpostazioni();
+  });
+}
+function rinominaCarta(id) {
+  const c = carte.get(id); if (!c) return;
+  apriFoglio(`
+    <h2>Rinomina la carta</h2>
+    <p class="sotto">Il codice a barre e i punti restano gli stessi.</p>
+    <form id="fRin">
+      <input class="campo-testo" id="nNomeCarta" maxlength="40" value="${esc(aspetto(c).nome)}" autocomplete="off" autocapitalize="words">
+      <div class="bottoni due">
+        <button type="button" class="btn" id="fIndietro">Indietro</button>
+        <button type="submit" class="btn primario">Salva</button>
+      </div>
+    </form>`);
+  const campo = $('nNomeCarta');
+  setTimeout(() => { campo.focus(); campo.select(); }, 80);
+  $('fIndietro').onclick = mostraImpostazioni;
+  $('fRin').onsubmit = e => {
+    e.preventDefault();
+    const nome = campo.value.trim();
+    if (!nome) { campo.focus(); return; }
+    cambiaCarta(id, { nome });
+    avviso(`Carta rinominata «${nome}»`);
+    mostraImpostazioni();
+  };
+}
+
 // ---------- Backup delle carte su file ----------
 $('mBackup').onclick = async () => {
   $('menu').hidden = true;
@@ -339,7 +414,7 @@ $('fileBackup').onchange = async e => {
       const id = carte.has(c.id) ? nuovoId() : (c.id || nuovoId());
       carte.set(id, { id, negozio: c.negozio || null, nome: String(c.nome || ''), codice: c.codice, formato: c.formato,
                       svg: c.svg, punti: Number.isFinite(c.punti) ? Math.round(c.punti) : 0,
-                      uso: Number.isFinite(c.uso) ? c.uso : 0, ultimo: Number.isFinite(c.ultimo) ? c.ultimo : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove });
+                      uso: Number.isFinite(c.uso) ? c.uso : 0, fissa: Number.isFinite(c.fissa) ? c.fissa : 0, ultimo: Number.isFinite(c.ultimo) ? c.ultimo : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove });
       nuove++;
     }
     salvaCarte();
