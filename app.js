@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '7';
+export const VERSIONE = '8';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -72,12 +72,12 @@ function leggiCarte() {
   try { lista = JSON.parse(localStorage.getItem(CHIAVE) || '[]'); } catch (_) {}
   carte.clear();
   lista.sort((x, y) => x.ordine - y.ordine).forEach(c => carte.set(c.id, c));
-  disegna([...carte.keys()]);
+  disegna();
 }
 function salvaCarte() {
   try { localStorage.setItem(CHIAVE, JSON.stringify([...carte.values()])); }
   catch (_) { avviso('Non riesco a salvare: memoria del telefono piena'); }
-  disegna([...carte.keys()]);
+  disegna();
 }
 function aggiungiCarta(c) { carte.set(c.id, c); salvaCarte(); }
 function cambiaCarta(id, campi) { const c = carte.get(id); if (!c) return; Object.assign(c, campi); salvaCarte(); }
@@ -118,9 +118,34 @@ function stileCarta(el, c) {
 }
 function impronta(c) { return [c.negozio, c.nome, c.codice, c.formato, c.svg?.length].join('|'); }
 
-function disegna(ordine) {
+// Le 4 carte più usate stanno in alto, poi una linea, poi tutte le altre nell'ordine in cui sono state aggiunte.
+const IN_ALTO = 4;
+let ordineFermo = null;   // mentre una carta è aperta l'ordine non cambia (si riordina alla chiusura)
+function ordineVisuale() {
+  const tutte = [...carte.values()];
+  if (ordineFermo) {
+    const prima = ordineFermo.ids.filter(id => carte.has(id));
+    const nuove = tutte.filter(c => !ordineFermo.ids.includes(c.id)).sort((x, y) => x.ordine - y.ordine).map(c => c.id);
+    return { ids: prima.concat(nuove), alte: Math.min(ordineFermo.alte, prima.length) };
+  }
+  const alte = tutte.filter(c => c.uso > 0)
+    .sort((x, y) => (y.uso - x.uso) || ((y.ultimo || 0) - (x.ultimo || 0)))
+    .slice(0, IN_ALTO).map(c => c.id);
+  const resto = tutte.filter(c => !alte.includes(c.id)).sort((x, y) => x.ordine - y.ordine).map(c => c.id);
+  return { ids: alte.concat(resto), alte: alte.length };
+}
+function disegna() {
   const g = $('griglia');
-  ordine.forEach((id, i) => {
+  const { ids: ordine, alte } = ordineVisuale();
+  // La linea sta solo se ci sono carte sia sopra sia sotto
+  let sep = $('separatore');
+  if (!sep) { sep = document.createElement('div'); sep.id = 'separatore'; sep.className = 'separatore'; }
+  const conLinea = alte > 0 && alte < ordine.length;
+  const posti = [];
+  ordine.forEach((id, i) => { if (conLinea && i === alte) posti.push(sep); posti.push(id); });
+  posti.forEach((voce, i) => {
+    if (voce === sep) { if (g.children[i] !== sep) g.insertBefore(sep, g.children[i] || null); return; }
+    const id = voce;
     const c = carte.get(id);
     let el = elementi.get(id);
     if (!el) {
@@ -140,6 +165,7 @@ function disegna(ordine) {
     }
     if (g.children[i] !== el) g.insertBefore(el, g.children[i] || null);
   });
+  if (!conLinea && sep.parentNode) sep.remove();
   for (const [id, el] of elementi) if (!carte.has(id)) { el.remove(); elementi.delete(id); }
   const n = carte.size;
   $('conta').textContent = n ? (n === 1 ? '1 carta' : n + ' carte') : '';
@@ -180,6 +206,9 @@ function apriCarta(id) {
   if (aperta) return;
   const orig = elementi.get(id), c = carte.get(id);
   if (!orig || !c) return;
+  ordineFermo = ordineVisuale();                    // l'ordine resta com'è finché la carta è aperta
+  c.uso = (c.uso || 0) + 1; c.ultimo = Date.now();  // conta quante volte la usi
+  try { localStorage.setItem(CHIAVE, JSON.stringify([...carte.values()])); } catch (_) {}
   const m = misureGrande();
   const el = document.createElement('div');
   el.className = 'carta grande';
@@ -204,7 +233,7 @@ function chiudiCarta(subito) {
   aperta = null;
   $('velo').classList.remove('su');
   $('apertaAzioni').classList.remove('su');
-  const fine = () => { el.remove(); origine.style.visibility = ''; };
+  const fine = () => { el.remove(); origine.style.visibility = ''; if (!aperta) { ordineFermo = null; disegna(); } };
   if (subito || !origine.isConnected) return fine();
   el.classList.remove('girata');
   el.style.transform = posizioneDa(origine, misureGrande());
@@ -309,7 +338,8 @@ $('fileBackup').onchange = async e => {
       if ([...carte.values()].some(x => x.codice === c.codice)) continue;
       const id = carte.has(c.id) ? nuovoId() : (c.id || nuovoId());
       carte.set(id, { id, negozio: c.negozio || null, nome: String(c.nome || ''), codice: c.codice, formato: c.formato,
-                      svg: c.svg, punti: Number.isFinite(c.punti) ? Math.round(c.punti) : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove });
+                      svg: c.svg, punti: Number.isFinite(c.punti) ? Math.round(c.punti) : 0,
+                      uso: Number.isFinite(c.uso) ? c.uso : 0, ultimo: Number.isFinite(c.ultimo) ? c.ultimo : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove });
       nuove++;
     }
     salvaCarte();

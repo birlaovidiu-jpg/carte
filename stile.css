@@ -76,6 +76,9 @@ svg { display: block; }
 /* ---------- Griglia delle carte ---------- */
 .griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (min-width: 600px) { .griglia { grid-template-columns: 1fr 1fr 1fr; } }
+/* La linea tra le 4 carte più usate e le altre */
+.separatore { grid-column: 1 / -1; height: 2px; margin: 6px 0; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(233,201,122,.75) 15%, rgba(233,201,122,.75) 85%, transparent); }
 
 .carta {
   container-type: inline-size;
