@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '9';
+export const VERSIONE = '10';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -387,7 +387,7 @@ $('mBackup').onclick = async () => {
   try {
     if (navigator.canShare?.({ files: [file] })) {
       // Su iPhone si apre il foglio di condivisione: «Salva su File» o AirDrop, Mail, ecc.
-      await navigator.share({ files: [file], title: 'Backup carte' });
+      await navigator.share({ files: [file] });
     } else {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(file); a.download = nome;
