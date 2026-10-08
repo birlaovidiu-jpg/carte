@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '6';
+export const VERSIONE = '7';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -272,6 +272,51 @@ document.addEventListener('click', e => { if (!$('menu').hidden && !$('menu').co
 
 // ---------- Eliminare una carta ----------
 let modoElimina = false;
+// ---------- Backup delle carte su file ----------
+$('mBackup').onclick = async () => {
+  $('menu').hidden = true;
+  if (!carte.size) { avviso('Non ci sono carte da salvare'); return; }
+  const data = new Date().toISOString().slice(0, 10);
+  const nome = `carte-backup-${data}.json`;
+  const testo = JSON.stringify({ app: 'carte', versione: 1, salvato: new Date().toISOString(), carte: [...carte.values()] });
+  const file = new File([testo], nome, { type: 'application/json' });
+  try {
+    if (navigator.canShare?.({ files: [file] })) {
+      // Su iPhone si apre il foglio di condivisione: «Salva su File» o AirDrop, Mail, ecc.
+      await navigator.share({ files: [file], title: 'Backup carte' });
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(file); a.download = nome;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+    avviso(`Backup di ${carte.size} ${carte.size === 1 ? 'carta' : 'carte'} pronto`);
+  } catch (x) {
+    if (x.name !== 'AbortError') avviso('Backup non riuscito');
+  }
+};
+$('mRipristina').onclick = () => { $('menu').hidden = true; $('fileBackup').value = ''; $('fileBackup').click(); };
+$('fileBackup').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    const lista = (d.app === 'carte' && Array.isArray(d.carte)) ? d.carte : null;
+    if (!lista) throw new Error('formato');
+    let nuove = 0;
+    for (const c of lista) {
+      if (!c || typeof c.codice !== 'string' || typeof c.svg !== 'string' || typeof c.formato !== 'string') continue;
+      // La stessa carta (stesso codice) non si duplica: se c'è già, resta quella che hai sul telefono
+      if ([...carte.values()].some(x => x.codice === c.codice)) continue;
+      const id = carte.has(c.id) ? nuovoId() : (c.id || nuovoId());
+      carte.set(id, { id, negozio: c.negozio || null, nome: String(c.nome || ''), codice: c.codice, formato: c.formato,
+                      svg: c.svg, punti: Number.isFinite(c.punti) ? Math.round(c.punti) : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove });
+      nuove++;
+    }
+    salvaCarte();
+    avviso(nuove ? `Ripristinate ${nuove} ${nuove === 1 ? 'carta' : 'carte'}` : 'Nessuna carta nuova: ci sono già tutte');
+  } catch (_) { avviso('Questo file non è un backup delle carte'); }
+};
+
 $('mElimina').onclick = () => {
   $('menu').hidden = true;
   if (!carte.size) { avviso('Non ci sono carte da eliminare'); return; }

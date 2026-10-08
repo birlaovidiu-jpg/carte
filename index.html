@@ -8,11 +8,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Carte">
-<link rel="apple-touch-icon" href="icona-180.png?v=6">
-<link rel="icon" href="icona-192.png?v=6">
+<link rel="apple-touch-icon" href="icona-180.png?v=7">
+<link rel="icon" href="icona-192.png?v=7">
 <link rel="manifest" href="manifest.json">
 <title>Carte</title>
-<link rel="stylesheet" href="stile.css?v=6">
+<link rel="stylesheet" href="stile.css?v=7">
 </head>
 <body>
 
@@ -50,6 +50,8 @@
 
 <!-- Menu -->
 <div class="menu" id="menu" hidden>
+  <button id="mBackup"><svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>Salva backup delle carte</button>
+  <button id="mRipristina"><svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>Ripristina da backup</button>
   <button id="mElimina"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>Elimina una carta</button>
 </div>
 
@@ -77,8 +79,9 @@
   <p class="cam-testo" id="camTesto">Inquadra il codice a barre della carta</p>
 </section>
 
+<input type="file" id="fileBackup" accept=".json,application/json" hidden>
 <div class="avviso" id="avviso"></div>
 
-<script type="module" src="app.js?v=6"></script>
+<script type="module" src="app.js?v=7"></script>
 </body>
 </html>
