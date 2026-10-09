@@ -1,12 +1,12 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '12';
+export const VERSIONE = '13';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
 const STRETTO = "'Avenir Next Condensed','Arial Narrow','Roboto Condensed',sans-serif";
 export const NEGOZI = {
-  coop:       { nome: 'Coop',       bg: '#00aeef', fg: '#ffffff', img: 'negozi/coop.png?v=12', font: 'font-weight:900;font-style:italic;letter-spacing:-.04em' },
+  coop:       { nome: 'Coop',       bg: '#2a8fd0', fg: '#ffffff', img: 'negozi/coop.png?v=13', font: 'font-weight:900;font-style:italic;letter-spacing:-.04em' },
   esselunga:  { nome: 'Esselunga',  bg: '#1aa84a', fg: '#ffffff', img: 'negozi/esselunga.png?v=12', font: 'font-weight:800;font-style:italic;letter-spacing:-.03em;text-transform:lowercase' },
   famila:     { nome: 'Famila',     bg: '#f05a2d', fg: '#ffffff', img: 'negozi/famila.png?v=12', font: 'font-weight:900;letter-spacing:-.02em;text-transform:lowercase' },
   pittarosso: { nome: 'PittaRosso', bg: '#d0043c', fg: '#ffffff', img: 'negozi/pittarosso.png?v=12', font: `font-family:${STRETTO};font-weight:800;text-transform:uppercase;letter-spacing:.01em` },
