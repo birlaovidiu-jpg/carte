@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '10';
+export const VERSIONE = '11';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -195,11 +195,24 @@ function tocca(id) {
 
 // ---------- Carta aperta: si alza, si ingrandisce e si gira ----------
 let aperta = null;   // { id, el, origine }
+// Finché la carta è girata lo schermo non si oscura e non si spegne (se il telefono lo permette)
+let schermoAcceso = null;
+async function tieniAcceso() {
+  try { if (navigator.wakeLock && !schermoAcceso) { schermoAcceso = await navigator.wakeLock.request('screen'); schermoAcceso.addEventListener('release', () => { schermoAcceso = null; }); } } catch (_) {}
+}
+function lasciaSpegnere() { try { schermoAcceso?.release(); } catch (_) {} schermoAcceso = null; }
+// Se si esce e si rientra nell'app mentre la carta è aperta, lo schermo torna a restare acceso
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && aperta) tieniAcceso(); });
+let sonda;
+function zonaSicuraSopra() {
+  if (!sonda) { sonda = document.createElement('div'); sonda.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;padding-top:env(safe-area-inset-top,0px)'; document.body.appendChild(sonda); }
+  return parseFloat(getComputedStyle(sonda).paddingTop) || 0;
+}
 function misureGrande() {
   const W = Math.min(innerWidth - 32, 440);
   const H = W / 1.586;
-  const sopra = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sicuro-su')) || 0;
-  const T = Math.max(sopra + 24, Math.min(innerHeight * 0.16, (innerHeight - H - 170) / 2));
+  // La carta si ferma in alto, vicino al bordo, così il lettore del negozio la prende bene (sotto la tacca dell'iPhone)
+  const T = zonaSicuraSopra() + 14;
   return { W, H, L: (innerWidth - W) / 2, T };
 }
 function posizioneDa(orig, m) {
@@ -223,6 +236,7 @@ function apriCarta(id) {
   document.body.appendChild(el);
   orig.style.visibility = 'hidden';
   aperta = { id, el, origine: orig };
+  tieniAcceso();
   const az = $('apertaAzioni');
   az.style.top = (m.T + m.H + 22) + 'px';
   void el.offsetWidth;   // fa partire l'animazione dalla posizione nella griglia
@@ -235,6 +249,7 @@ function chiudiCarta(subito) {
   if (!aperta) return;
   const { el, origine } = aperta;
   aperta = null;
+  lasciaSpegnere();
   $('velo').classList.remove('su');
   $('apertaAzioni').classList.remove('su');
   const fine = () => { el.remove(); origine.style.visibility = ''; if (!aperta) { ordineFermo = null; disegna(); } };
