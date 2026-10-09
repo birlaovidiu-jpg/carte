@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '13';
+export const VERSIONE = '14';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -17,7 +17,8 @@ export const NEGOZI = {
   guess:      { nome: 'Guess',      bg: '#111111', fg: '#ffffff', img: 'negozi/guess.png?v=12', font: `font-family:${SERIF};font-weight:700;text-transform:uppercase;letter-spacing:.08em` },
   limoni:     { nome: 'Limoni',     bg: '#111111', fg: '#ffffff', img: 'negozi/limoni.png?v=12', font: `font-family:${SERIF};font-weight:600;letter-spacing:.01em` },
   lindt:      { nome: 'Lindt',      bg: '#dccf94', fg: '#3a2a05', img: 'negozi/lindt.png?v=12', font: `font-family:${SERIF};font-style:italic;font-weight:600` },
-  ovs:        { nome: 'OVS',        bg: '#1c1a1b', fg: '#ffffff', img: 'negozi/ovs.png?v=12', font: 'font-weight:900;letter-spacing:.02em' }
+  ovs:        { nome: 'OVS',        bg: '#1c1a1b', fg: '#ffffff', img: 'negozi/ovs.png?v=12', font: 'font-weight:900;letter-spacing:.02em' },
+  lidl:       { nome: 'Lidl',       bg: '#0a5fc4', fg: '#ffffff', img: 'negozi/lidl.png?v=14', font: 'font-weight:800;letter-spacing:-.01em' }
 };
 // Colori per le carte di altri negozi (scelti dal nome, sempre uguali per lo stesso nome)
 const ALTRI = [
