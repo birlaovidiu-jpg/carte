@@ -1,23 +1,23 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '11';
+export const VERSIONE = '12';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
 const STRETTO = "'Avenir Next Condensed','Arial Narrow','Roboto Condensed',sans-serif";
 export const NEGOZI = {
-  coop:       { nome: 'Coop',       bg: '#ffffff', fg: '#e2231a', font: 'font-weight:900;font-style:italic;letter-spacing:-.04em' },
-  esselunga:  { nome: 'Esselunga',  bg: 'linear-gradient(135deg,#e5101f,#a0000f)', fg: '#ffffff', font: 'font-weight:800;font-style:italic;letter-spacing:-.03em;text-transform:lowercase' },
-  famila:     { nome: 'Famila',     bg: 'linear-gradient(135deg,#e30613,#b8000c)', fg: '#ffdd00', font: 'font-weight:900;letter-spacing:-.02em;text-transform:lowercase' },
-  pittarosso: { nome: 'PittaRosso', bg: 'linear-gradient(135deg,#ff2a3c,#c4001a)', fg: '#ffffff', font: `font-family:${STRETTO};font-weight:800;text-transform:uppercase;letter-spacing:.01em` },
-  benetton:   { nome: 'Benetton',   bg: 'linear-gradient(135deg,#119a4a,#006b2e)', fg: '#ffffff', font: `font-family:${STRETTO};font-weight:700;text-transform:uppercase;letter-spacing:.06em` },
-  conbipel:   { nome: 'Conbipel',   bg: 'linear-gradient(135deg,#3a3a3e,#1b1b1e)', fg: '#ffffff', font: 'font-weight:300;text-transform:uppercase;letter-spacing:.14em' },
-  douglas:    { nome: 'Douglas',    bg: 'linear-gradient(135deg,#b3eae0,#8fd6c9)', fg: '#0b0b0b', font: `font-family:${SERIF};font-weight:400;text-transform:uppercase;letter-spacing:.1em` },
-  gala:       { nome: 'Gala',       bg: 'linear-gradient(135deg,#8a3ba0,#3f1450)', fg: '#ffffff', font: `font-family:${SERIF};font-style:italic;font-weight:600` },
-  guess:      { nome: 'Guess',      bg: 'linear-gradient(135deg,#1a1a1a,#000000)', fg: '#d9b871', font: `font-family:${SERIF};font-weight:700;text-transform:uppercase;letter-spacing:.08em` },
-  limoni:     { nome: 'Limoni',     bg: 'linear-gradient(135deg,#ffe24a,#f8c600)', fg: '#1a1a1a', font: `font-family:${SERIF};font-weight:600;letter-spacing:.01em` },
-  lindt:      { nome: 'Lindt',      bg: 'linear-gradient(135deg,#123a80,#061a42)', fg: '#d6b46c', font: `font-family:${SERIF};font-style:italic;font-weight:600` },
-  ovs:        { nome: 'OVS',        bg: 'linear-gradient(135deg,#1747c2,#002a8a)', fg: '#ffffff', font: 'font-weight:900;letter-spacing:.02em' }
+  coop:       { nome: 'Coop',       bg: '#00aeef', fg: '#ffffff', img: 'negozi/coop.png?v=12', font: 'font-weight:900;font-style:italic;letter-spacing:-.04em' },
+  esselunga:  { nome: 'Esselunga',  bg: '#1aa84a', fg: '#ffffff', img: 'negozi/esselunga.png?v=12', font: 'font-weight:800;font-style:italic;letter-spacing:-.03em;text-transform:lowercase' },
+  famila:     { nome: 'Famila',     bg: '#f05a2d', fg: '#ffffff', img: 'negozi/famila.png?v=12', font: 'font-weight:900;letter-spacing:-.02em;text-transform:lowercase' },
+  pittarosso: { nome: 'PittaRosso', bg: '#d0043c', fg: '#ffffff', img: 'negozi/pittarosso.png?v=12', font: `font-family:${STRETTO};font-weight:800;text-transform:uppercase;letter-spacing:.01em` },
+  benetton:   { nome: 'Benetton',   bg: '#00a04a', fg: '#ffffff', img: 'negozi/benetton.png?v=12', font: `font-family:${STRETTO};font-weight:700;text-transform:uppercase;letter-spacing:.06em` },
+  conbipel:   { nome: 'Conbipel',   bg: '#111111', fg: '#ffffff', img: 'negozi/conbipel.png?v=12', font: 'font-weight:300;text-transform:uppercase;letter-spacing:.14em' },
+  douglas:    { nome: 'Douglas',    bg: '#c5e4e1', fg: '#111111', img: 'negozi/douglas.png?v=12', font: `font-family:${SERIF};font-weight:400;text-transform:uppercase;letter-spacing:.1em` },
+  gala:       { nome: 'Gala',       bg: '#b01832', fg: '#ffffff', img: 'negozi/gala.png?v=12', font: `font-family:${SERIF};font-style:italic;font-weight:600` },
+  guess:      { nome: 'Guess',      bg: '#111111', fg: '#ffffff', img: 'negozi/guess.png?v=12', font: `font-family:${SERIF};font-weight:700;text-transform:uppercase;letter-spacing:.08em` },
+  limoni:     { nome: 'Limoni',     bg: '#111111', fg: '#ffffff', img: 'negozi/limoni.png?v=12', font: `font-family:${SERIF};font-weight:600;letter-spacing:.01em` },
+  lindt:      { nome: 'Lindt',      bg: '#dccf94', fg: '#3a2a05', img: 'negozi/lindt.png?v=12', font: `font-family:${SERIF};font-style:italic;font-weight:600` },
+  ovs:        { nome: 'OVS',        bg: '#1c1a1b', fg: '#ffffff', img: 'negozi/ovs.png?v=12', font: 'font-weight:900;letter-spacing:.02em' }
 };
 // Colori per le carte di altri negozi (scelti dal nome, sempre uguali per lo stesso nome)
 const ALTRI = [
@@ -28,7 +28,7 @@ const ALTRI = [
 ];
 function aspetto(c) {
   const n = NEGOZI[c.negozio];
-  if (n) return { nome: c.nome || n.nome, bg: n.bg, fg: n.fg, font: n.font };
+  if (n) return { nome: c.nome || n.nome, bg: n.bg, fg: n.fg, font: n.font, img: n.img };
   const nome = c.nome || 'Carta';
   let h = 0; for (const ch of nome.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const [bg, fg] = ALTRI[h % ALTRI.length];
@@ -94,12 +94,14 @@ function htmlCarta(c) {
   const quadrato = QUADRATI.includes(c.formato);
   return `
     <div class="giro">
+      ${a.img ? `<div class="faccia fronte con-img" style="background-image:url('${a.img}')">${
+          c.nome && c.nome !== NEGOZI[c.negozio].nome ? `<div class="f-etichetta">${esc(c.nome)}</div>` : ''}</div>` : `
       <div class="faccia fronte">
         <div class="lucido"></div>
         <div class="f-tipo">Carta fedeltà</div>
         <div class="f-chip"></div>
         <div class="f-nome" style="${a.font}">${esc(a.nome)}</div>
-      </div>
+      </div>`}
       <div class="faccia retro">
         <div class="r-testa">
           <span class="r-nome" style="${a.font}">${esc(a.nome)}</span>
@@ -331,7 +333,7 @@ function mostraImpostazioni() {
   const righe = lista.map(c => {
     const a = aspetto(c);
     return `<div class="riga" data-id="${c.id}">
-      <span class="pallino" style="background:${a.bg}"></span>
+      <span class="pallino" style="background:${a.img ? `url('${a.img}') center/cover` : a.bg}"></span>
       <span class="riga-nome">${esc(a.nome)}</span>
       <button class="r-btn" data-az="rinomina" aria-label="Rinomina ${esc(a.nome)}">${SVG_MATITA}</button>
       ${man ? `<button class="r-btn stella${c.fissa ? ' su' : ''}" data-az="fissa" aria-label="Fissa in alto ${esc(a.nome)}">${SVG_STELLA}</button>` : ''}
@@ -592,7 +594,7 @@ async function trovato(Z, r) {
 
 function scegliNegozio(id, codice) {
   const mini = Object.entries(NEGOZI).map(([k, n]) =>
-    `<button class="negozio" data-k="${k}" style="--bg:${n.bg};--fg:${n.fg}"><span style="${n.font}">${esc(n.nome)}</span></button>`).join('');
+    `<button class="negozio con-img" data-k="${k}" aria-label="${esc(n.nome)}" style="background-image:url('${n.img}')"></button>`).join('');
   apriFoglio(`
     <div class="letto"><span class="ok">✓</span><span>Carta salvata · <b>${esc(numeroCodice(codice))}</b></span></div>
     <h2>Di quale negozio è?</h2>
