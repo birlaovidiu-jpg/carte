@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '18';
+export const VERSIONE = '19';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -141,7 +141,7 @@ function stileCarta(el, c) {
 }
 function impronta(c) { return [c.negozio, c.nome, c.codice, c.formato, c.svg?.length].join('|'); }
 
-// Le 4 carte più usate stanno in alto, poi una linea, poi tutte le altre nell'ordine in cui sono state aggiunte.
+// Le 4 carte più usate stanno in alto, poi una linea, poi tutte le altre dalla più usata alla meno usata.
 const IN_ALTO = 4;
 const CH_MODO = 'carte-modo';   // 'auto' = le più usate, 'manuale' = le sceglie lui (carte con «fissa»)
 let modoAlte = 'auto';
@@ -158,7 +158,9 @@ function ordineVisuale() {
     ? tutte.filter(c => c.fissa).sort((x, y) => x.fissa - y.fissa)
     : tutte.filter(c => c.uso > 0).sort((x, y) => (y.uso - x.uso) || ((y.ultimo || 0) - (x.ultimo || 0))))
     .slice(0, IN_ALTO).map(c => c.id);
-  const resto = tutte.filter(c => !alte.includes(c.id)).sort((x, y) => x.ordine - y.ordine).map(c => c.id);
+  // Sotto la linea: dalla più usata alla meno usata (a parità, la usata più di recente; poi l'ordine in cui sono state aggiunte)
+  const resto = tutte.filter(c => !alte.includes(c.id))
+    .sort((x, y) => ((y.uso || 0) - (x.uso || 0)) || ((y.ultimo || 0) - (x.ultimo || 0)) || (x.ordine - y.ordine)).map(c => c.id);
   return { ids: alte.concat(resto), alte: alte.length };
 }
 function disegna() {
@@ -659,6 +661,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  19: 'Anche le carte sotto la linea sono ordinate in base a quanto le usi.',
   18: 'Le carte Arca Planet, Bialetti, Bottega Verde, Gabel, Gaudi, Nuna Lie e Sandro Ferrone hanno la loro immagine.',
   17: 'Il pulsante OK della finestra di aggiornamento ha un colore nuovo.',
   16: 'Quando l\'app si aggiorna compare questa finestra: con la i vedi cosa è cambiato.',
