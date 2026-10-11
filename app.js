@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '15';
+export const VERSIONE = '16';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -636,4 +636,40 @@ if ('serviceWorker' in navigator && !PROVA) navigator.serviceWorker.register('sw
 // Per le prove
 window.__carte = { carte, NEGOZI, aggiungiCarta };
 
+// ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
+// A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
+const NOVITA = {
+  16: 'Quando l\'app si aggiorna compare questa finestra: con la i vedi cosa è cambiato.',
+  15: 'L\'app si apre subito, senza aspettare.',
+  14: 'Aggiunta la carta Lidl.',
+  13: 'La carta Coop ora è quella di Unicoop Firenze.',
+  12: 'Le carte hanno la grafica vera dei negozi.',
+  11: 'Con la carta girata lo schermo resta acceso e la carta sale in alto, vicino al bordo, per il lettore.',
+  10: 'Il backup salva un solo file. Nuova icona.',
+  9: 'Nelle Impostazioni scegli tu le 4 carte in alto e puoi rinominare le carte.',
+  8: 'Le 4 carte più usate stanno in alto, separate da una linea.',
+  7: 'Salvataggio e ripristino delle carte con un file di backup.'
+};
+const CH_VISTA = 'carte-vista';
+function mostraAggiornamento() {
+  let vista = 14;   // la prima volta si parte dalla 14, l'ultima prima di questa finestra
+  try { const v = parseInt(localStorage.getItem(CH_VISTA), 10); if (v > 0) vista = v; } catch (_) {}
+  const ora = parseInt(VERSIONE, 10);
+  if (ora <= vista) return;
+  const nuove = Object.keys(NOVITA).map(Number).filter(n => n > vista && n <= ora).sort((a, b) => b - a).slice(0, 8);
+  $('aggVersione').textContent = 'Versione ' + ora;
+  $('aggLista').innerHTML = nuove.map(n => `<li><b>${n}</b><span>${esc(NOVITA[n])}</span></li>`).join('');
+  $('aggNovita').hidden = true; $('aggInfo').setAttribute('aria-expanded', 'false');
+  $('aggVelo').hidden = false;
+  $('aggInfo').onclick = () => {
+    const apri = $('aggNovita').hidden; $('aggNovita').hidden = !apri;
+    $('aggInfo').setAttribute('aria-expanded', apri ? 'true' : 'false'); $('aggInfo').classList.toggle('su', apri);
+  };
+  $('aggOk').onclick = () => {
+    try { localStorage.setItem(CH_VISTA, String(ora)); } catch (_) {}
+    $('aggVelo').hidden = true;
+  };
+}
+
 leggiCarte();
+mostraAggiornamento();
