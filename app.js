@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '19';
+export const VERSIONE = '20';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -143,9 +143,9 @@ function impronta(c) { return [c.negozio, c.nome, c.codice, c.formato, c.svg?.le
 
 // Le 4 carte più usate stanno in alto, poi una linea, poi tutte le altre dalla più usata alla meno usata.
 const IN_ALTO = 4;
-const CH_MODO = 'carte-modo';   // 'auto' = le più usate, 'manuale' = le sceglie lui (carte con «fissa»)
+const CH_MODO = 'carte-modo';   // 'auto' = le più usate, 'manuale' = le 4 con la stella (campo «fissa»), 'libero' = l'ordine deciso trascinando (campo «pos»)
 let modoAlte = 'auto';
-try { if (localStorage.getItem(CH_MODO) === 'manuale') modoAlte = 'manuale'; } catch (_) {}
+try { const m = localStorage.getItem(CH_MODO); if (m === 'manuale' || m === 'libero') modoAlte = m; } catch (_) {}
 let ordineFermo = null;   // mentre una carta è aperta l'ordine non cambia (si riordina alla chiusura)
 function ordineVisuale() {
   const tutte = [...carte.values()];
@@ -153,6 +153,10 @@ function ordineVisuale() {
     const prima = ordineFermo.ids.filter(id => carte.has(id));
     const nuove = tutte.filter(c => !ordineFermo.ids.includes(c.id)).sort((x, y) => x.ordine - y.ordine).map(c => c.id);
     return { ids: prima.concat(nuove), alte: Math.min(ordineFermo.alte, prima.length) };
+  }
+  if (modoAlte === 'libero') {   // l'ordine che ha deciso lui trascinando le carte
+    const ids = tutte.sort((x, y) => ((x.pos ?? 1e9) - (y.pos ?? 1e9)) || (x.ordine - y.ordine)).map(c => c.id);
+    return { ids, alte: Math.min(IN_ALTO, ids.length) };
   }
   const alte = (modoAlte === 'manuale'
     ? tutte.filter(c => c.fissa).sort((x, y) => x.fissa - y.fissa)
@@ -213,7 +217,101 @@ function disegna() {
   }
 }
 
+
+// ---------- Tenere premuto una carta per spostarla ----------
+let bloccaClickFino = 0;
+let drag = null;   // { id, el, x0, y0, x, y, attivo, timer, clone, dx, dy, raf }
+function assegnaPos(ids) { ids.forEach((id, i) => { const c = carte.get(id); if (c) c.pos = i; }); }
+function impostaModo(m) { modoAlte = m; try { localStorage.setItem(CH_MODO, m); } catch (_) {} }
+const idsInGriglia = () => [...$('griglia').children].filter(c => c.classList.contains('carta') && !c.classList.contains('volante')).map(c => c.dataset.id);
+
+$('griglia').addEventListener('pointerdown', e => {
+  if (modoElimina || aperta || drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const el = e.target.closest('.carta'); if (!el) return;
+  drag = { id: el.dataset.id, el, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, attivo: false };
+  drag.timer = setTimeout(iniziaTrascinamento, 380);
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  drag.x = e.clientX; drag.y = e.clientY;
+  if (!drag.attivo) {
+    // Se il dito si muove prima del mezzo secondo, è uno scorrimento della pagina: niente trascinamento
+    if (Math.hypot(drag.x - drag.x0, drag.y - drag.y0) > 10) { clearTimeout(drag.timer); drag = null; }
+    return;
+  }
+  muoviTrascinata();
+});
+document.addEventListener('pointerup', fineTrascinamento);
+document.addEventListener('pointercancel', fineTrascinamento);
+document.addEventListener('touchmove', e => { if (drag && drag.attivo) e.preventDefault(); }, { passive: false });
+document.addEventListener('contextmenu', e => { if (drag && drag.attivo) e.preventDefault(); });
+
+function iniziaTrascinamento() {
+  if (!drag || aperta) { drag = null; return; }
+  const r = drag.el.getBoundingClientRect();
+  drag.attivo = true;
+  drag.dx = drag.x - r.left; drag.dy = drag.y - r.top;
+  const clone = drag.el.cloneNode(true);
+  clone.classList.add('volante'); clone.removeAttribute('data-id');
+  Object.assign(clone.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  document.body.appendChild(clone);
+  drag.clone = clone;
+  drag.el.classList.add('segnaposto');
+  document.body.classList.add('trascina');
+  navigator.vibrate?.(25);
+  muoviTrascinata();
+  scorriSeVicinoAlBordo();
+}
+function muoviTrascinata() {
+  const r0 = drag.el.getBoundingClientRect();
+  drag.clone.style.transform = `translate(${drag.x - drag.dx - parseFloat(drag.clone.style.left)}px, ${drag.y - drag.dy - parseFloat(drag.clone.style.top)}px) scale(1.06)`;
+  // Sopra quale carta sta il dito? (si sposta solo quando entra in un'altra carta)
+  for (const [id, el] of elementi) {
+    if (el === drag.el) continue;
+    const r = el.getBoundingClientRect();
+    if (drag.x >= r.left && drag.x <= r.right && drag.y >= r.top && drag.y <= r.bottom) {
+      const g = $('griglia'); const figli = [...g.children];
+      const dopo = figli.indexOf(el) > figli.indexOf(drag.el);
+      const prima = new Map([...elementi.values()].map(x => [x, x.getBoundingClientRect()]));
+      g.insertBefore(drag.el, dopo ? el.nextSibling : el);
+      // le altre carte scivolano al loro nuovo posto
+      for (const [x, rp] of prima) {
+        if (x === drag.el) continue;
+        const rn = x.getBoundingClientRect(); const ddx = rp.left - rn.left, ddy = rp.top - rn.top;
+        if (ddx || ddy) x.animate([{ transform: `translate(${ddx}px, ${ddy}px)` }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      }
+      break;
+    }
+  }
+}
+function scorriSeVicinoAlBordo() {
+  if (!drag || !drag.attivo) return;
+  const margine = 90, passo = 14;
+  if (drag.y < margine) window.scrollBy(0, -passo); else if (drag.y > innerHeight - margine) window.scrollBy(0, passo);
+  drag.raf = requestAnimationFrame(() => { if (drag && drag.attivo) { muoviTrascinata(); scorriSeVicinoAlBordo(); } });
+}
+function fineTrascinamento() {
+  if (!drag) return;
+  clearTimeout(drag.timer); cancelAnimationFrame(drag.raf);
+  const d = drag; drag = null;
+  if (!d.attivo) return;
+  bloccaClickFino = Date.now() + 450;
+  const finale = idsInGriglia();
+  // la carta sollevata si posa nel suo posto
+  const r = d.el.getBoundingClientRect(); const c = d.clone;
+  c.style.transition = 'transform .18s cubic-bezier(.2,.8,.2,1)';
+  c.style.transform = `translate(${r.left - parseFloat(c.style.left)}px, ${r.top - parseFloat(c.style.top)}px) scale(1)`;
+  setTimeout(() => { c.remove(); d.el.classList.remove('segnaposto'); document.body.classList.remove('trascina'); }, 190);
+  const prima = ordineVisuale().ids;
+  if (finale.join() !== prima.join()) {
+    const eraLibero = modoAlte === 'libero';
+    assegnaPos(finale); impostaModo('libero'); salvaCarte();
+    if (!eraLibero) avviso('Ora l\'ordine lo decidi tu (puoi cambiarlo in Impostazioni)');
+  }
+}
+
 function tocca(id) {
+  if (Date.now() < bloccaClickFino) return;   // appena finito di trascinare: non è un tocco
   if (modoElimina) return chiediElimina(id);
   apriCarta(id);
 }
@@ -365,21 +463,24 @@ function mostraImpostazioni() {
   apriFoglio(`
     <h2>Impostazioni</h2>
     <p class="sezione">Le carte in alto</p>
-    <div class="seg">
-      <button data-m="auto" class="${man ? '' : 'su'}">Le più usate</button>
+    <div class="seg tre">
+      <button data-m="auto" class="${modoAlte === 'auto' ? 'su' : ''}">Le più usate</button>
       <button data-m="manuale" class="${man ? 'su' : ''}">Le scelgo io</button>
+      <button data-m="libero" class="${modoAlte === 'libero' ? 'su' : ''}">Il mio ordine</button>
     </div>
     <p class="sotto piccolo">${man
       ? `Tocca la stella per fissare fino a 4 carte in alto (${nFisse} di ${IN_ALTO}).`
-      : 'In alto ci sono le 4 carte che apri più spesso.'}</p>
+      : modoAlte === 'libero'
+        ? 'Le carte stanno dove le hai messe tu. Tieni premuta una carta e trascinala per spostarla.'
+        : 'In alto ci sono le 4 carte che apri più spesso. Tieni premuta una carta e trascinala per decidere tu l\'ordine.'}</p>
     <p class="sezione">Le tue carte${man ? '' : ' · tocca la matita per rinominare'}</p>
     <div class="righe">${righe || '<p class="sotto">Non hai ancora nessuna carta.</p>'}</div>
     <div class="bottoni"><button class="btn primario" id="fFatto">Fatto</button></div>`);
   $('fFatto').onclick = chiudiFoglio;
   $('foglioDentro').querySelectorAll('.seg button').forEach(b => b.onclick = () => {
-    modoAlte = b.dataset.m;
-    try { localStorage.setItem(CH_MODO, modoAlte); } catch (_) {}
-    disegna(); mostraImpostazioni();
+    if (b.dataset.m === 'libero' && modoAlte !== 'libero') assegnaPos(ordineVisuale().ids);   // parte dall'ordine che vede adesso
+    impostaModo(b.dataset.m);
+    salvaCarte(); mostraImpostazioni();
   });
   $('foglioDentro').querySelectorAll('.riga button').forEach(b => b.onclick = () => {
     const id = b.closest('.riga').dataset.id;
@@ -454,7 +555,7 @@ $('fileBackup').onchange = async e => {
       const id = carte.has(c.id) ? nuovoId() : (c.id || nuovoId());
       carte.set(id, { id, negozio: c.negozio || null, nome: String(c.nome || ''), codice: c.codice, formato: c.formato,
                       svg: c.svg, punti: Number.isFinite(c.punti) ? Math.round(c.punti) : 0,
-                      uso: Number.isFinite(c.uso) ? c.uso : 0, fissa: Number.isFinite(c.fissa) ? c.fissa : 0, ultimo: Number.isFinite(c.ultimo) ? c.ultimo : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove });
+                      uso: Number.isFinite(c.uso) ? c.uso : 0, fissa: Number.isFinite(c.fissa) ? c.fissa : 0, pos: Number.isFinite(c.pos) ? c.pos : undefined, ultimo: Number.isFinite(c.ultimo) ? c.ultimo : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove });
       nuove++;
     }
     salvaCarte();
@@ -661,6 +762,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  20: 'Tieni premuta una carta e trascinala per metterla dove vuoi. In Impostazioni, «Il mio ordine» o «Le più usate».',
   19: 'Anche le carte sotto la linea sono ordinate in base a quanto le usi.',
   18: 'Le carte Arca Planet, Bialetti, Bottega Verde, Gabel, Gaudi, Nuna Lie e Sandro Ferrone hanno la loro immagine.',
   17: 'Il pulsante OK della finestra di aggiornamento ha un colore nuovo.',

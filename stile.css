@@ -358,3 +358,13 @@ svg { display: block; }
   box-shadow: 0 10px 24px -10px rgba(21,190,190,.75), inset 0 1px 0 rgba(255,255,255,.35); font-weight: 700; letter-spacing: .01em; }
 .agg-i.su { background: linear-gradient(135deg, #2fe6a7, #0fb5ba); color: #04202a; box-shadow: none; }
 .agg-novita li b { color: #3de0c0; }
+
+/* ---------- Spostare le carte tenendole premute ---------- */
+.carta { -webkit-touch-callout: none; }
+.carta.segnaposto { opacity: .25; transform: scale(.97); transition: opacity .15s; }
+.carta.volante { position: fixed; z-index: 70; margin: 0; pointer-events: none; animation: none; transition: none; will-change: transform;
+  filter: drop-shadow(0 18px 22px rgba(0,0,0,.55)); }
+.trascina, .trascina * { -webkit-user-select: none; user-select: none; }
+.trascina { overscroll-behavior: none; }
+.seg.tre { grid-template-columns: 1fr 1fr 1fr; }
+.seg.tre button { font-size: 13.5px; padding: 0 4px; }
