@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '17';
+export const VERSIONE = '18';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -18,8 +18,26 @@ export const NEGOZI = {
   limoni:     { nome: 'Limoni',     bg: '#111111', fg: '#ffffff', img: 'negozi/limoni.png?v=12', font: `font-family:${SERIF};font-weight:600;letter-spacing:.01em` },
   lindt:      { nome: 'Lindt',      bg: '#dccf94', fg: '#3a2a05', img: 'negozi/lindt.png?v=12', font: `font-family:${SERIF};font-style:italic;font-weight:600` },
   ovs:        { nome: 'OVS',        bg: '#1c1a1b', fg: '#ffffff', img: 'negozi/ovs.png?v=12', font: 'font-weight:900;letter-spacing:.02em' },
-  lidl:       { nome: 'Lidl',       bg: '#0a5fc4', fg: '#ffffff', img: 'negozi/lidl.png?v=14', font: 'font-weight:800;letter-spacing:-.01em' }
+  lidl:       { nome: 'Lidl',       bg: '#0a5fc4', fg: '#ffffff', img: 'negozi/lidl.png?v=14', font: 'font-weight:800;letter-spacing:-.01em' },
+  arcaplanet: { nome: 'Arca Planet', bg: '#fbdd01', fg: '#2a2200', img: 'negozi/arcaplanet.png?v=18', font: 'font-weight:800' },
+  bialetti:   { nome: 'Bialetti', bg: '#111111', fg: '#ffffff', img: 'negozi/bialetti.png?v=18', font: 'font-weight:800' },
+  bottegaverde:{ nome: 'Bottega Verde', bg: '#3f6b34', fg: '#ffffff', img: 'negozi/bottegaverde.png?v=18', font: 'font-weight:800' },
+  gabel:      { nome: 'Gabel', bg: '#e2211c', fg: '#ffffff', img: 'negozi/gabel.png?v=18', font: 'font-weight:800' },
+  gaudi:      { nome: 'Gaudi', bg: '#000000', fg: '#ffffff', img: 'negozi/gaudi.png?v=18', font: 'font-weight:800' },
+  nunalie:    { nome: 'Nuna Lie', bg: '#111111', fg: '#ffffff', img: 'negozi/nunalie.png?v=18', font: 'font-weight:800' },
+  sandroferrone:{ nome: 'Sandro Ferrone', bg: '#111111', fg: '#ffffff', img: 'negozi/sandroferrone.png?v=18', font: 'font-weight:800' }
 };
+// Una carta aggiunta con «Altro…» il cui nome è quello di un negozio che conosciamo prende la sua grafica
+const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function negozioPerNome(nome) {
+  const n = norm(nome); if (n.length < 3) return null;
+  return Object.keys(NEGOZI).find(k => n === norm(k) || n === norm(NEGOZI[k].nome) || (n.length > 4 && (n.startsWith(norm(k)) || n.startsWith(norm(NEGOZI[k].nome))))) || null;
+}
+function associaNegozi() {
+  let cambiato = false;
+  for (const c of carte.values()) if (!NEGOZI[c.negozio]) { const k = negozioPerNome(c.nome); if (k) { c.negozio = k; cambiato = true; } }
+  return cambiato;
+}
 // Colori per le carte di altri negozi (scelti dal nome, sempre uguali per lo stesso nome)
 const ALTRI = [
   ['linear-gradient(135deg,#ff7a18,#d94a00)', '#fff'], ['linear-gradient(135deg,#0fb5ae,#06756f)', '#fff'],
@@ -73,9 +91,11 @@ function leggiCarte() {
   try { lista = JSON.parse(localStorage.getItem(CHIAVE) || '[]'); } catch (_) {}
   carte.clear();
   lista.sort((x, y) => x.ordine - y.ordine).forEach(c => carte.set(c.id, c));
+  if (associaNegozi()) { try { localStorage.setItem(CHIAVE, JSON.stringify([...carte.values()])); } catch (_) {} }
   disegna();
 }
 function salvaCarte() {
+  associaNegozi();
   try { localStorage.setItem(CHIAVE, JSON.stringify([...carte.values()])); }
   catch (_) { avviso('Non riesco a salvare: memoria del telefono piena'); }
   disegna();
@@ -639,6 +659,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  18: 'Le carte Arca Planet, Bialetti, Bottega Verde, Gabel, Gaudi, Nuna Lie e Sandro Ferrone hanno la loro immagine.',
   17: 'Il pulsante OK della finestra di aggiornamento ha un colore nuovo.',
   16: 'Quando l\'app si aggiorna compare questa finestra: con la i vedi cosa è cambiato.',
   15: 'L\'app si apre subito, senza aspettare.',
