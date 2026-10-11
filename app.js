@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '16';
+export const VERSIONE = '17';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -639,6 +639,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  17: 'Il pulsante OK della finestra di aggiornamento ha un colore nuovo.',
   16: 'Quando l\'app si aggiorna compare questa finestra: con la i vedi cosa è cambiato.',
   15: 'L\'app si apre subito, senza aspettare.',
   14: 'Aggiunta la carta Lidl.',
