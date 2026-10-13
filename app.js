@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '23';
+export const VERSIONE = '24';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -186,6 +186,7 @@ function disegna() {
       el.className = 'carta';
       el.dataset.id = id;
       el.onclick = () => tocca(id);
+      el.addEventListener('animationend', () => { el.style.animation = 'none'; }, { once: true });   // l'entrata si vede una volta sola, non a ogni spostamento
       elementi.set(id, el);
     }
     if (el.dataset.impronta !== impronta(c)) {
@@ -262,26 +263,33 @@ function iniziaTrascinamento() {
   muoviTrascinata();
   scorriSeVicinoAlBordo();
 }
+// Posizione «vera» di una carta nella griglia (senza contare gli scivolamenti in corso): è su questa che si decide dove sta il dito
+const postoVero = el => ({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
 function muoviTrascinata() {
-  const r0 = drag.el.getBoundingClientRect();
   drag.clone.style.transform = `translate(${drag.x - drag.dx - parseFloat(drag.clone.style.left)}px, ${drag.y - drag.dy - parseFloat(drag.clone.style.top)}px) scale(1.06)`;
-  // Sopra quale carta sta il dito? (si sposta solo quando entra in un'altra carta)
-  for (const [id, el] of elementi) {
+  // Dove si trova il dito, nel sistema di coordinate delle posizioni vere
+  const op = drag.el.offsetParent || document.body, ro = op.getBoundingClientRect();
+  const px = drag.x - ro.left - op.clientLeft, py = drag.y - ro.top - op.clientTop;
+  for (const el of elementi.values()) {
     if (el === drag.el) continue;
-    const r = el.getBoundingClientRect();
-    if (drag.x >= r.left && drag.x <= r.right && drag.y >= r.top && drag.y <= r.bottom) {
-      const g = $('griglia'); const figli = [...g.children];
-      const dopo = figli.indexOf(el) > figli.indexOf(drag.el);
-      const prima = new Map([...elementi.values()].map(x => [x, x.getBoundingClientRect()]));
-      g.insertBefore(drag.el, dopo ? el.nextSibling : el);
-      // le altre carte scivolano al loro nuovo posto
-      for (const [x, rp] of prima) {
-        if (x === drag.el) continue;
-        const rn = x.getBoundingClientRect(); const ddx = rp.left - rn.left, ddy = rp.top - rn.top;
-        if (ddx || ddy) x.animate([{ transform: `translate(${ddx}px, ${ddy}px)` }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
-      }
-      break;
+    const r = postoVero(el), mx = r.w * 0.18, my = r.h * 0.18;   // ci si sposta solo entrando bene dentro un'altra carta: niente scambi avanti e indietro sul bordo
+    if (px < r.x + mx || px > r.x + r.w - mx || py < r.y + my || py > r.y + r.h - my) continue;
+    const g = $('griglia'), figli = [...g.children];
+    const dopo = figli.indexOf(el) > figli.indexOf(drag.el);
+    // prima dello spostamento: dove sta ogni carta (vera) e dove si vede adesso (se sta ancora scivolando)
+    const prima = new Map([...elementi.values()].filter(x => x !== drag.el).map(x => {
+      const t = getComputedStyle(x).transform; let m = { m41: 0, m42: 0 };
+      try { if (t && t !== 'none') m = new DOMMatrix(t); } catch (_) {}
+      return [x, { p: postoVero(x), vx: m.m41, vy: m.m42 }];
+    }));
+    g.insertBefore(drag.el, dopo ? el.nextSibling : el);
+    for (const [x, v] of prima) {
+      const n = postoVero(x), dx = v.p.x - n.x + v.vx, dy = v.p.y - n.y + v.vy;   // parte da dove si vede adesso: nessuno scatto
+      if (Math.abs(dx) < .5 && Math.abs(dy) < .5) continue;
+      x.getAnimations().forEach(a => a.cancel());
+      x.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
     }
+    break;
   }
 }
 function scorriSeVicinoAlBordo() {
@@ -786,6 +794,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  24: 'Quando sposti una carta, le altre scivolano al loro posto senza tremare.',
   23: 'All\'avvio compare subito lo sfondo scuro, senza il bianco prima delle carte.',
   21: 'L\'app si apre subito anche dopo molte ore o giorni. Gli aggiornamenti arrivano in silenzio e si vedono alla prossima apertura.',
   20: 'Tieni premuta una carta e trascinala per metterla dove vuoi. In Impostazioni, «Il mio ordine» o «Le più usate».',
