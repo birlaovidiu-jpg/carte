@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tempi di apertura</title>
+<style>
+  html, body { background: #0d1018; color: #f3f1ec; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  p { color: #9a9fae; line-height: 1.4; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; margin-top: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  th { color: #9a9fae; font-weight: 600; font-size: 12px; }
+  .lento { color: #ff9f0a; font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tempi di apertura</h1>
+  <p>Le ultime aperture dell'app su questo telefono, in millisecondi. Servono solo a capire se qualcosa rallenta.</p>
+  <div id="dati"></div>
+</main>
+<script>
+  var l = [];
+  try { l = JSON.parse(localStorage.getItem('carte-tempi') || '[]'); } catch (e) {}
+  var d = document.getElementById('dati');
+  if (!l.length) { d.innerHTML = '<p>Nessuna apertura registrata: apri l\'app e poi torna qui.</p>'; }
+  else {
+    var h = '<table><tr><th>Quando</th><th>Vers.</th><th>Pagina</th><th>Carte</th><th>Dalla rete</th><th>Copia sul telefono</th></tr>';
+    l.slice().reverse().forEach(function (r) {
+      var lento = r.ms_carte > 1000;
+      h += '<tr><td>' + r.quando + '</td><td>' + r.v + '</td><td>' + r.ms_pagina + '</td><td class="' + (lento ? 'lento' : '') + '">' + r.ms_carte + '</td><td>' + r.rete + '</td><td>' + (r.sw ? 'sì' : 'no') + '</td></tr>';
+    });
+    d.innerHTML = h + '</table>';
+  }
+</script>
+</body>
+</html>

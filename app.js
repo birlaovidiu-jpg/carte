@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '20';
+export const VERSIONE = '21';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -742,19 +742,43 @@ function scegliNegozio(id, codice) {
   };
 }
 
-// ---------- Installabile sul telefono + aggiornamenti ----------
+// ---------- Installabile sul telefono + aggiornamenti in silenzio ----------
+// L'apertura non aspetta mai Internet. Se c'è una versione nuova, i suoi file si scaricano in secondo piano
+// (mentre usi l'app) e si vedono alla PROSSIMA apertura, già pronti sul telefono.
 const PROVA = ['localhost', '127.0.0.1'].includes(location.hostname);
-if ('serviceWorker' in navigator && !PROVA) navigator.serviceWorker.register('sw.js').catch(() => {});
-(async () => {
+async function preparaAggiornamento() {
   try {
     const r = await fetch('versione.txt?x=' + Date.now(), { cache: 'no-store' });
     const nuova = (await r.text()).trim();
-    if (nuova && nuova !== VERSIONE && sessionStorage.getItem('aggiornato') !== nuova) {
-      sessionStorage.setItem('aggiornato', nuova);
-      const u = new URL(location.href); u.searchParams.set('agg', nuova); location.replace(u.href);
+    if (!nuova || nuova === VERSIONE || localStorage.getItem('carte-preparata') === nuova) return;
+    const html = await (await fetch('index.html?x=' + Date.now(), { cache: 'no-store' })).text();
+    const indirizzi = new Set(html.match(/[\w./-]+\?v=\d+/g) || []);
+    const jsUrl = [...indirizzi].find(u => /^app\.js\?v=/.test(u));
+    if (jsUrl) {   // anche le immagini dei negozi citate nel nuovo app.js
+      const js = await (await fetch(jsUrl)).text();
+      (js.match(/negozi\/[\w-]+\.png\?v=\d+/g) || []).forEach(u => indirizzi.add(u));
     }
+    for (const u of indirizzi) await fetch(u);
+    localStorage.setItem('carte-preparata', nuova);
+  } catch (_) { /* senza rete: si riprova alla prossima apertura */ }
+}
+// Tutto questo parte DOPO che l'app si è già mostrata
+addEventListener('load', () => setTimeout(() => {
+  if ('serviceWorker' in navigator && !PROVA) navigator.serviceWorker.register('sw.js').catch(() => {});
+  preparaAggiornamento();
+}, 1500));
+
+// Registro dei tempi di apertura (solo sul telefono, non si vede): serve a capire se qualcosa rallenta
+function registraTempi() {
+  try {
+    const n = performance.getEntriesByType('navigation')[0] || {};
+    const fp = (performance.getEntriesByType('paint')[0] || {}).startTime || 0;
+    const l = JSON.parse(localStorage.getItem('carte-tempi') || '[]');
+    l.push({ quando: new Date().toISOString().slice(0, 16).replace('T', ' '), v: VERSIONE, sw: n.workerStart > 0, ms_pagina: Math.round(n.domContentLoadedEventEnd || 0),
+             ms_prima_immagine: Math.round(fp), ms_carte: Math.round(performance.now()), tipo: n.type || '', rete: Math.round(n.responseEnd - n.fetchStart) || 0 });
+    localStorage.setItem('carte-tempi', JSON.stringify(l.slice(-15)));
   } catch (_) {}
-})();
+}
 
 // Per le prove
 window.__carte = { carte, NEGOZI, aggiungiCarta };
@@ -762,6 +786,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  21: 'L\'app si apre subito anche dopo molte ore o giorni. Gli aggiornamenti arrivano in silenzio e si vedono alla prossima apertura.',
   20: 'Tieni premuta una carta e trascinala per metterla dove vuoi. In Impostazioni, «Il mio ordine» o «Le più usate».',
   19: 'Anche le carte sotto la linea sono ordinate in base a quanto le usi.',
   18: 'Le carte Arca Planet, Bialetti, Bottega Verde, Gabel, Gaudi, Nuna Lie e Sandro Ferrone hanno la loro immagine.',
@@ -800,3 +825,5 @@ function mostraAggiornamento() {
 
 leggiCarte();
 mostraAggiornamento();
+document.getElementById('splash')?.remove();   // le carte sono pronte: via la schermata di avvio
+registraTempi();
