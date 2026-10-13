@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '21';
+export const VERSIONE = '23';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -786,6 +786,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  23: 'All\'avvio compare subito lo sfondo scuro, senza il bianco prima delle carte.',
   21: 'L\'app si apre subito anche dopo molte ore o giorni. Gli aggiornamenti arrivano in silenzio e si vedono alla prossima apertura.',
   20: 'Tieni premuta una carta e trascinala per metterla dove vuoi. In Impostazioni, «Il mio ordine» o «Le più usate».',
   19: 'Anche le carte sotto la linea sono ordinate in base a quanto le usi.',
@@ -825,5 +826,7 @@ function mostraAggiornamento() {
 
 leggiCarte();
 mostraAggiornamento();
-document.getElementById('splash')?.remove();   // le carte sono pronte: via la schermata di avvio
-registraTempi();
+// Le carte sono pronte: si toglie la schermata scura, ma solo quando lo stile è arrivato (così non si vede mai niente «a metà»)
+function finitoAvvio() { document.getElementById('splash')?.remove(); registraTempi(); }
+const fogliostile = document.querySelector('link[rel="stylesheet"]');
+if (fogliostile && fogliostile.media !== 'all') fogliostile.addEventListener('load', finitoAvvio, { once: true }); else finitoAvvio();
