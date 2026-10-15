@@ -4,7 +4,7 @@ rules_version = '2';
 // Da incollare in Firebase → Firestore Database → Regole → Pubblica.
 //
 //  - chi apre l'app entra con un numero anonimo (nessuna password) e può leggere e usare le carte;
-//  - il REGISTRO dei punti (movimenti) si può solo aggiungere: nessuno può correggerlo o cancellarlo;
+//  - il REGISTRO (punti caricati/scaricati, carte aggiunte, rinominate, eliminate) si può solo aggiungere: nessuno può correggerlo o cancellarlo;
 //  - ogni movimento porta il nome di chi l'ha fatto e l'ora messa dal server (non falsificabile dal telefono).
 
 service cloud.firestore {
@@ -26,12 +26,13 @@ service cloud.firestore {
     match /movimenti/{m} {
       allow read: if entrato();
       allow create: if entrato()
-        && request.resource.data.tipo in ['carica', 'scarica', 'iniziale']
+        && request.resource.data.tipo in ['carica', 'scarica', 'iniziale', 'nuova', 'modifica', 'elimina']
         && request.resource.data.punti is int
         && request.resource.data.saldo is int
         && testo(request.resource.data.chi, 1, 30)
         && testo(request.resource.data.carta, 1, 60)
         && testo(request.resource.data.cartaNome, 0, 60)
+        && request.resource.data.get('dettaglio', '') is string && request.resource.data.get('dettaglio', '').size() <= 120
         && request.resource.data.ts == request.time;
       allow update, delete: if false;
     }

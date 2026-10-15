@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono sul telefono (si aprono subito, anche senza Internet) e online per tutta la famiglia (nube.js).
-export const VERSIONE = '26';
+export const VERSIONE = '27';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -117,10 +117,19 @@ function salvaCarte() { salvaLocale(); disegna(); }
 function aggiungiCarta(c) { carte.set(c.id, c); salvaCarte(); inNube(c, true); }
 function cambiaCarta(id, campi) {
   const c = carte.get(id); if (!c) return;
+  const prima = c.nome ? aspetto(c).nome : '';
   Object.assign(c, campi); salvaCarte();
-  if (('negozio' in campi) || ('nome' in campi)) inNube(c, false);
+  if (('negozio' in campi) || ('nome' in campi)) {
+    inNube(c, false);
+    const dopo = aspetto(c).nome;   // chi ha dato il nome a una carta nuova, o l'ha cambiato, resta scritto nel registro
+    if (nube && dopo && dopo !== prima) nube.registra(c, prima ? 'modifica' : 'nuova', chi() || 'Famiglia', prima ? `Rinominata: ${prima} → ${dopo}` : '');
+  }
 }
-function eliminaCarta(id) { carte.delete(id); salvaCarte(); nube?.eliminaCarta(id); }
+function eliminaCarta(id) {
+  const c = carte.get(id);
+  if (c && nube) nube.registra(c, 'elimina', chi() || 'Famiglia', '');
+  carte.delete(id); salvaCarte(); nube?.eliminaCarta(id);
+}
 
 // ---------- Online, per tutta la famiglia ----------
 // Online stanno: negozio, nome, codice, saldo punti e registro dei movimenti. Sul telefono restano solo i gusti personali
@@ -137,7 +146,7 @@ function inNube(c, nuova) {
 }
 async function avviaNube() {
   let m;
-  try { m = await import('./nube.js?v=26'); } catch (_) { risolviNube(null); return; }
+  try { m = await import('./nube.js?v=27'); } catch (_) { risolviNube(null); return; }
   nube = m; risolviNube(m);
   m.ascoltaCarte(dalCloud, sincronizza);
 }
@@ -637,7 +646,7 @@ async function mostraRegistro() {
   const quando = m => { const t = m.ts?.toDate ? m.ts.toDate() : new Date(); return t; };
   apriFoglio(`
     <h2>Registro punti</h2>
-    <p class="sotto">Ogni carica e scarica, con chi l'ha fatta.</p>
+    <p class="sotto">Carica e scarica punti, carte aggiunte, rinominate o eliminate: con chi l'ha fatto e quando.</p>
     <div class="filtri">
       <select id="rCarta" aria-label="Carta"></select>
       <select id="rAnno" aria-label="Anno"></select>
@@ -676,6 +685,13 @@ async function mostraRegistro() {
         const t = quando(m);
         const data = t.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' · ' + t.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
         const iniz = m.tipo === 'iniziale';
+        if (m.tipo === 'nuova' || m.tipo === 'modifica' || m.tipo === 'elimina') {
+          const testo = m.tipo === 'nuova' ? 'Carta aggiunta' : m.tipo === 'elimina' ? 'Carta eliminata' : (m.dettaglio || 'Carta rinominata');
+          return `<div class="mov">
+          <div class="mov-sx"><b>${filtro.carta ? esc(m.chi) : esc(m.cartaNome || 'Carta')}</b><small>${data}${filtro.carta ? '' : ' · ' + esc(m.chi)}</small></div>
+          <div class="mov-dx"><small class="evento">${esc(testo)}</small></div>
+        </div>`;
+        }
         return `<div class="mov">
           <div class="mov-sx"><b>${filtro.carta ? esc(m.chi) : esc(m.cartaNome || 'Carta')}</b><small>${data}${filtro.carta ? '' : ' · ' + esc(m.chi)}</small></div>
           <div class="mov-dx"><b class="${iniz ? '' : m.punti > 0 ? 'pos' : 'neg'}">${iniz ? numero(m.punti) : segnoPunti(m.punti)}</b><small>${iniz ? 'saldo iniziale' : 'saldo ' + numero(m.saldo)}</small></div>
@@ -964,6 +980,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  27: 'Nel registro resta scritto anche chi aggiunge, rinomina o elimina una carta. L\'app si apre ancora più veloce.',
   26: 'Su un telefono nuovo le carte della famiglia arrivano subito e da sole.',
   25: 'Le carte sono online: le vedono e le usano tutti in famiglia. Ogni volta che carichi o scarichi punti, il saldo si aggiorna per tutti e resta scritto nel registro chi l\'ha fatto e quando (menu ⋯ → Registro punti).',
   24: 'Quando sposti una carta, le altre scivolano al loro posto senza tremare.',
@@ -1007,7 +1024,8 @@ function mostraAggiornamento() {
 
 leggiCarte();
 mostraAggiornamento();
-setTimeout(avviaNube, 200);                                       // le carte online si collegano dopo che l'app si è già mostrata
+// Le carte online si collegano a riposo, dopo che l'app si è già mostrata e animata: l'apertura non rallenta
+addEventListener('load', () => { const via = () => setTimeout(avviaNube, 300); ('requestIdleCallback' in window) ? requestIdleCallback(via, { timeout: 2500 }) : via(); });
 if (!chi()) setTimeout(() => { if (!aperta) chiediNome(true); }, 700);   // ognuno scrive il suo nome una volta sola
 // Le carte sono pronte: si toglie la schermata scura, ma solo quando lo stile è arrivato (così non si vede mai niente «a metà»)
 function finitoAvvio() { document.getElementById('splash')?.remove(); registraTempi(); }

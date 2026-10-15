@@ -61,10 +61,10 @@ export function scriviCarta(c, conPunti) {
 export function eliminaCarta(id) { return deleteDoc(doc(db, 'carte', id)).catch(() => {}); }
 
 // ---------- Il registro dei punti ----------
-function movimento(c, tipo, punti, saldo, chi) {
+function movimento(c, tipo, punti, saldo, chi, dettaglio) {
   const d = new Date();
   return { carta: c.id, cartaNome: (c.nome || '').slice(0, 60), tipo, punti, saldo, chi: chi.slice(0, 30), ts: serverTimestamp(),
-           anno: d.getFullYear(), mese: d.getMonth() + 1 };
+           anno: d.getFullYear(), mese: d.getMonth() + 1, dettaglio: (dettaglio || '').slice(0, 120) };
 }
 // Carica o scarica: cambia il saldo della carta e scrive il movimento, insieme (o tutti e due o nessuno)
 export function muoviPunti(c, delta, saldo, chi) {
@@ -72,6 +72,10 @@ export function muoviPunti(c, delta, saldo, chi) {
   b.update(doc(db, 'carte', c.id), { punti: increment(delta) });
   b.set(doc(collection(db, 'movimenti')), movimento(c, delta > 0 ? 'carica' : 'scarica', delta, saldo, chi));
   return b.commit();
+}
+// Carta aggiunta, rinominata o eliminata: resta scritto chi l'ha fatto
+export function registra(c, tipo, chi, dettaglio) {
+  return setDoc(doc(collection(db, 'movimenti')), movimento(c, tipo, 0, c.punti || 0, chi, dettaglio)).catch(() => {});
 }
 // Saldo con cui una carta entra nel registro (una volta sola per carta: l'id è sempre lo stesso)
 export function saldoIniziale(c, chi) {
