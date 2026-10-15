@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono sul telefono (si aprono subito, anche senza Internet) e online per tutta la famiglia (nube.js).
-export const VERSIONE = '25';
+export const VERSIONE = '26';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -137,7 +137,7 @@ function inNube(c, nuova) {
 }
 async function avviaNube() {
   let m;
-  try { m = await import('./nube.js?v=25'); } catch (_) { risolviNube(null); return; }
+  try { m = await import('./nube.js?v=26'); } catch (_) { risolviNube(null); return; }
   nube = m; risolviNube(m);
   m.ascoltaCarte(dalCloud, sincronizza);
 }
@@ -964,6 +964,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  26: 'Su un telefono nuovo le carte della famiglia arrivano subito e da sole.',
   25: 'Le carte sono online: le vedono e le usano tutti in famiglia. Ogni volta che carichi o scarichi punti, il saldo si aggiorna per tutti e resta scritto nel registro chi l\'ha fatto e quando (menu ⋯ → Registro punti).',
   24: 'Quando sposti una carta, le altre scivolano al loro posto senza tremare.',
   23: 'All\'avvio compare subito lo sfondo scuro, senza il bianco prima delle carte.',

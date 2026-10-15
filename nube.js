@@ -31,15 +31,26 @@ function entra() { if (!auth.currentUser) signInAnonymously(auth).catch(() => {}
 setTimeout(entra, 400);   // se l'accesso salvato non è tornato da solo
 addEventListener('online', entra);
 
+// Un ascolto parte solo quando l'accesso c'è già; se il server lo rifiuta o cade, riparte da solo dopo qualche secondo
+function ascolta(avvia) {
+  let ferma = null, fermo = false;
+  const parti = () => pronta.then(() => {
+    if (fermo) return;
+    ferma = avvia(() => { ferma?.(); ferma = null; if (!fermo) setTimeout(parti, 5000); });
+  });
+  parti();
+  return () => { fermo = true; ferma?.(); };
+}
+
 // ---------- Le carte ----------
 // aMod(modifiche, daCache): modifiche = [{ tipo:'added'|'modified'|'removed', id, dati }]
 // aSync(ids): la prima volta che il server risponde, con gli id delle carte che ci sono online
 export function ascoltaCarte(aMod, aSync) {
   let primo = true;
-  return onSnapshot(collection(db, 'carte'), snap => {
+  return ascolta(errore => onSnapshot(collection(db, 'carte'), snap => {
     aMod(snap.docChanges().map(c => ({ tipo: c.type, id: c.doc.id, dati: c.doc.data() })), snap.metadata.fromCache);
     if (primo && !snap.metadata.fromCache) { primo = false; aSync(new Set(snap.docs.map(d => d.id))); }
-  }, () => {});
+  }, errore));
 }
 // Carta nuova o modificata. I punti si scrivono solo alla creazione (poi cambiano solo con i movimenti)
 export function scriviCarta(c, conPunti) {
@@ -67,7 +78,7 @@ export function saldoIniziale(c, chi) {
   return setDoc(doc(db, 'movimenti', 'ini_' + c.id), movimento(c, 'iniziale', c.punti, c.punti, chi)).catch(() => {});
 }
 export function ascoltaMovimenti(aggiorna) {
-  return onSnapshot(query(collection(db, 'movimenti'), orderBy('ts', 'desc')), snap => {
+  return ascolta(errore => onSnapshot(query(collection(db, 'movimenti'), orderBy('ts', 'desc')), snap => {
     aggiorna(snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })), snap.metadata.fromCache);
-  }, () => aggiorna(null, true));
+  }, errore));
 }
