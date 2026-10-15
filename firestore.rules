@@ -19,6 +19,7 @@ service cloud.firestore {
         && request.resource.data.punti is int && request.resource.data.punti >= 0
         && testo(request.resource.data.codice, 1, 200)
         && testo(request.resource.data.svg, 0, 20000)
+        && request.resource.data.get('img', '') is string && request.resource.data.get('img', '').size() <= 300000
         && request.resource.data.get('nome', '') is string && request.resource.data.get('nome', '').size() <= 40;
       allow delete: if entrato();
     }

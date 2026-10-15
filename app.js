@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
 // Le carte sono sul telefono (si aprono subito, anche senza Internet) e online per tutta la famiglia (nube.js).
-export const VERSIONE = '27';
+export const VERSIONE = '28';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -49,6 +49,7 @@ function aspetto(c) {
   const n = NEGOZI[c.negozio];
   if (n) return { nome: c.nome || n.nome, bg: n.bg, fg: n.fg, font: n.font, img: n.img };
   const nome = c.nome || 'Carta';
+  if (c.img) return { nome, bg: '#111111', fg: '#ffffff', font: 'font-weight:800', img: c.img };   // immagine vera della carta, messa online per tutti
   let h = 0; for (const ch of nome.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const [bg, fg] = ALTRI[h % ALTRI.length];
   return { nome, bg, fg, font: 'font-weight:800' };
@@ -136,7 +137,7 @@ function eliminaCarta(id) {
 // (carte più usate, stelle, ordine trascinato).
 let nube = null;
 let risolviNube; const nubePronta = new Promise(r => { risolviNube = r; });
-const CAMPI_NUBE = ['negozio', 'nome', 'codice', 'formato', 'svg', 'punti', 'ordine'];
+const CAMPI_NUBE = ['negozio', 'nome', 'codice', 'formato', 'svg', 'punti', 'ordine', 'img'];
 const CH_CHI = 'carte-chi';
 function chi() { try { return (localStorage.getItem(CH_CHI) || '').trim(); } catch (_) { return ''; } }
 function inNube(c, nuova) {
@@ -146,7 +147,7 @@ function inNube(c, nuova) {
 }
 async function avviaNube() {
   let m;
-  try { m = await import('./nube.js?v=27'); } catch (_) { risolviNube(null); return; }
+  try { m = await import('./nube.js?v=28'); } catch (_) { risolviNube(null); return; }
   nube = m; risolviNube(m);
   m.ascoltaCarte(dalCloud, sincronizza);
 }
@@ -186,7 +187,7 @@ function htmlCarta(c) {
   return `
     <div class="giro">
       ${a.img ? `<div class="faccia fronte con-img" style="background-image:url('${a.img}')">${
-          c.nome && c.nome !== NEGOZI[c.negozio].nome ? `<div class="f-etichetta">${esc(c.nome)}</div>` : ''}</div>` : `
+          NEGOZI[c.negozio] && c.nome && c.nome !== NEGOZI[c.negozio].nome ? `<div class="f-etichetta">${esc(c.nome)}</div>` : ''}</div>` : `
       <div class="faccia fronte">
         <div class="lucido"></div>
         <div class="f-tipo">Carta fedeltà</div>
@@ -209,7 +210,7 @@ function stileCarta(el, c) {
   el.style.setProperty('--bg', a.bg);
   el.style.setProperty('--fg', a.fg);
 }
-function impronta(c) { return [c.negozio, c.nome, c.codice, c.formato, c.svg?.length].join('|'); }
+function impronta(c) { return [c.negozio, c.nome, c.codice, c.formato, c.svg?.length, c.img?.length].join('|'); }
 
 // Le 4 carte più usate stanno in alto, poi una linea, poi tutte le altre dalla più usata alla meno usata.
 const IN_ALTO = 4;
@@ -746,7 +747,7 @@ $('fileBackup').onchange = async e => {
       if ([...carte.values()].some(x => x.codice === c.codice)) continue;
       const id = idDa(c.codice);
       const nuova = { id, negozio: c.negozio || null, nome: String(c.nome || ''), codice: c.codice, formato: c.formato,
-                      svg: c.svg, punti: Number.isFinite(c.punti) ? Math.round(c.punti) : 0,
+                      svg: c.svg, img: typeof c.img === 'string' ? c.img : undefined, punti: Number.isFinite(c.punti) ? Math.round(c.punti) : 0,
                       uso: Number.isFinite(c.uso) ? c.uso : 0, fissa: Number.isFinite(c.fissa) ? c.fissa : 0, pos: Number.isFinite(c.pos) ? c.pos : undefined, ultimo: Number.isFinite(c.ultimo) ? c.ultimo : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove };
       carte.set(id, nuova); aggiunte.push(nuova);
       nuove++;
@@ -980,6 +981,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  28: 'Quando qualcuno aggiunge una carta di un negozio nuovo, dopo poco compare con la sua immagine vera, per tutti.',
   27: 'Nel registro resta scritto anche chi aggiunge, rinomina o elimina una carta. L\'app si apre ancora più veloce.',
   26: 'Su un telefono nuovo le carte della famiglia arrivano subito e da sole.',
   25: 'Le carte sono online: le vedono e le usano tutti in famiglia. Ogni volta che carichi o scarichi punti, il saldo si aggiorna per tutti e resta scritto nel registro chi l\'ha fatto e quando (menu ⋯ → Registro punti).',

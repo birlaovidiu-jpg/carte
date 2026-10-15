@@ -56,6 +56,7 @@ export function ascoltaCarte(aMod, aSync) {
 export function scriviCarta(c, conPunti) {
   const dati = { negozio: c.negozio ?? null, nome: c.nome || '', codice: c.codice, formato: c.formato, svg: c.svg, ordine: c.ordine || Date.now() };
   if (conPunti) dati.punti = Math.max(0, Math.round(c.punti || 0));
+  if (conPunti && c.img) dati.img = c.img;   // l'immagine vera della carta (la mette lo strumento «immagini», non il telefono)
   return setDoc(doc(db, 'carte', c.id), dati, { merge: true }).catch(() => {});
 }
 export function eliminaCarta(id) { return deleteDoc(doc(db, 'carte', id)).catch(() => {}); }
