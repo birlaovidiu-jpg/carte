@@ -1,6 +1,6 @@
 // Le mie carte — carte fedeltà dei negozi con codice a barre e punti.
-// Le carte sono salvate sul telefono (memoria del browser): niente account, niente server.
-export const VERSIONE = '24';
+// Le carte sono sul telefono (si aprono subito, anche senza Internet) e online per tutta la famiglia (nube.js).
+export const VERSIONE = '25';
 
 // ---------- I negozi (colori e scritte, simili a quelli veri) ----------
 const SERIF = "'Didot','Bodoni 72','Playfair Display',Georgia,serif";
@@ -86,24 +86,85 @@ const CHIAVE = 'carte';
 const carte = new Map();          // id → dati della carta
 const elementi = new Map();       // id → elemento nella griglia
 
+// Lo stesso codice a barre dà sempre lo stesso id: su ogni telefono la stessa carta è la stessa carta online (niente doppioni)
+function idDa(codice) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < codice.length; i++) { const ch = codice.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 'c' + (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+function salvaLocale() {
+  associaNegozi();
+  try { localStorage.setItem(CHIAVE, JSON.stringify([...carte.values()])); return true; }
+  catch (_) { avviso('Non riesco a salvare: memoria del telefono piena'); return false; }
+}
 function leggiCarte() {
   let lista = [];
   try { lista = JSON.parse(localStorage.getItem(CHIAVE) || '[]'); } catch (_) {}
   carte.clear();
-  lista.sort((x, y) => x.ordine - y.ordine).forEach(c => carte.set(c.id, c));
-  if (associaNegozi()) { try { localStorage.setItem(CHIAVE, JSON.stringify([...carte.values()])); } catch (_) {} }
+  let cambiato = false;
+  lista.sort((x, y) => x.ordine - y.ordine).forEach(c => {
+    if (!c || typeof c.codice !== 'string') return;
+    const id = idDa(c.codice);
+    if (c.id !== id) { c.id = id; cambiato = true; }
+    if (!carte.has(id)) carte.set(id, c); else cambiato = true;
+  });
+  if (associaNegozi() || cambiato) salvaLocale();
   disegna();
 }
-function salvaCarte() {
-  associaNegozi();
-  try { localStorage.setItem(CHIAVE, JSON.stringify([...carte.values()])); }
-  catch (_) { avviso('Non riesco a salvare: memoria del telefono piena'); }
-  disegna();
+function salvaCarte() { salvaLocale(); disegna(); }
+function aggiungiCarta(c) { carte.set(c.id, c); salvaCarte(); inNube(c, true); }
+function cambiaCarta(id, campi) {
+  const c = carte.get(id); if (!c) return;
+  Object.assign(c, campi); salvaCarte();
+  if (('negozio' in campi) || ('nome' in campi)) inNube(c, false);
 }
-function aggiungiCarta(c) { carte.set(c.id, c); salvaCarte(); }
-function cambiaCarta(id, campi) { const c = carte.get(id); if (!c) return; Object.assign(c, campi); salvaCarte(); }
-function eliminaCarta(id) { carte.delete(id); salvaCarte(); }
-const nuovoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function eliminaCarta(id) { carte.delete(id); salvaCarte(); nube?.eliminaCarta(id); }
+
+// ---------- Online, per tutta la famiglia ----------
+// Online stanno: negozio, nome, codice, saldo punti e registro dei movimenti. Sul telefono restano solo i gusti personali
+// (carte più usate, stelle, ordine trascinato).
+let nube = null;
+let risolviNube; const nubePronta = new Promise(r => { risolviNube = r; });
+const CAMPI_NUBE = ['negozio', 'nome', 'codice', 'formato', 'svg', 'punti', 'ordine'];
+const CH_CHI = 'carte-chi';
+function chi() { try { return (localStorage.getItem(CH_CHI) || '').trim(); } catch (_) { return ''; } }
+function inNube(c, nuova) {
+  if (!nube) return;   // se Internet non c'è ancora, la carta parte da sola alla prima connessione (sincronizza)
+  nube.scriviCarta(c, nuova);
+  if (nuova && c.punti > 0) nube.saldoIniziale(c, chi() || 'Famiglia');
+}
+async function avviaNube() {
+  let m;
+  try { m = await import('./nube.js?v=25'); } catch (_) { risolviNube(null); return; }
+  nube = m; risolviNube(m);
+  m.ascoltaCarte(dalCloud, sincronizza);
+}
+// Arrivano le carte online (nuove, cambiate, tolte da qualcuno)
+function dalCloud(modifiche) {
+  let cambiato = false;
+  for (const m of modifiche) {
+    if (m.tipo === 'removed') { if (carte.delete(m.id)) cambiato = true; continue; }
+    const d = m.dati; let c = carte.get(m.id);
+    if (!c) {
+      if (typeof d.codice !== 'string') continue;
+      c = { id: m.id, uso: 0, ultimo: 0, fissa: 0, ordine: Date.now() };
+      carte.set(m.id, c); cambiato = true;
+    }
+    for (const k of CAMPI_NUBE) if (d[k] !== undefined && c[k] !== d[k]) { c[k] = d[k]; cambiato = true; }
+  }
+  if (cambiato) { salvaLocale(); disegna(); }
+}
+// Le carte che ci sono solo su questo telefono vanno online (così le vedono tutti)
+function sincronizza(idsOnline) {
+  for (const c of carte.values()) if (!idsOnline.has(c.id)) inNube(c, true);
+}
+async function nubeUsabile() {
+  if (!nube) await Promise.race([nubePronta, new Promise(r => setTimeout(r, 5000))]);
+  if (!nube) return false;
+  return !!(await Promise.race([nube.pronta, new Promise(r => setTimeout(() => r(null), 5000))]));
+}
 
 // Se l'app è aperta in due finestre, l'altra si aggiorna subito
 addEventListener('storage', e => { if (e.key === CHIAVE) leggiCarte(); });
@@ -404,12 +465,16 @@ function apriFoglio(html) {
   $('foglio').classList.add('su');
   $('foglioVelo').classList.add('su');
 }
+let fermaRegistro = null;
+let foglioFisso = false;   // il foglio del nome non si chiude toccando fuori
 function chiudiFoglio() {
+  foglioFisso = false;
+  if (fermaRegistro) { fermaRegistro(); fermaRegistro = null; }
   $('foglio').classList.remove('su');
   $('foglioVelo').classList.remove('su');
   document.activeElement?.blur?.();
 }
-$('foglioVelo').onclick = chiudiFoglio;
+$('foglioVelo').onclick = () => { if (!foglioFisso) chiudiFoglio(); };
 
 // ---------- Punti: + carica, − scarica ----------
 $('bPiu').onclick = () => aperta && chiediPunti(aperta.id, +1);
@@ -432,14 +497,20 @@ function chiediPunti(id, segno) {
   setTimeout(() => campo.focus(), 60);
   campo.oninput = () => { campo.value = campo.value.replace(/\D/g, '').slice(0, 9); };
   $('fAnnulla').onclick = chiudiFoglio;
-  $('fPunti').onsubmit = e => {
+  $('fPunti').onsubmit = async e => {
     e.preventDefault();
     const n = parseInt(campo.value, 10);
     const ora = carte.get(id)?.punti || 0;
     const scuoti = () => { campo.classList.remove('scuoti'); void campo.offsetWidth; campo.classList.add('scuoti'); };
     if (!n) return scuoti();
     if (segno < 0 && n > ora) { scuoti(); avviso(`Sulla carta ci sono solo ${numero(ora)} punti`); return; }
-        cambiaCarta(id, { punti: ora + segno * n });
+    if (!chi()) { chiediNome(true, () => chiediPunti(id, segno)); return; }   // il movimento porta il nome di chi lo fa
+    if (!await nubeUsabile()) { avviso('Manca il collegamento: riprova tra poco'); return; }
+    // Saldo e movimento vanno online insieme; senza Internet partono da soli appena torna
+    const c = carte.get(id); if (!c) return;
+    const delta = segno * n, saldo = (c.punti || 0) + delta;
+    c.punti = saldo; salvaCarte();
+    nube.muoviPunti(c, delta, saldo, chi()).catch(() => avviso('Movimento non registrato: controlla il registro'));
     chiudiFoglio();
     avviso(`${segno > 0 ? '+' : '−'}${numero(n)} punti`);
   };
@@ -525,6 +596,103 @@ function rinominaCarta(id) {
   };
 }
 
+// ---------- Il mio nome (resta scritto su ogni movimento di punti) ----------
+function chiediNome(primo, dopo) {
+  foglioFisso = !!primo;
+  apriFoglio(`
+    <h2>${primo ? 'Come ti chiami?' : 'Il mio nome'}</h2>
+    <p class="sotto">Scrivi il tuo nome: quando carichi o scarichi punti, nel registro resta scritto che l'hai fatto tu.</p>
+    <form id="fChi">
+      <input class="campo-testo" id="nChi" maxlength="30" value="${esc(chi())}" placeholder="Il tuo nome" autocomplete="off" autocapitalize="words">
+      <div class="bottoni${primo ? '' : ' due'}">
+        ${primo ? '' : '<button type="button" class="btn" id="fAnnulla">Annulla</button>'}
+        <button type="submit" class="btn primario">Salva</button>
+      </div>
+    </form>`);
+  const campo = $('nChi');
+  setTimeout(() => { campo.focus(); campo.select(); }, 80);
+  if (!primo) $('fAnnulla').onclick = chiudiFoglio;
+  $('fChi').onsubmit = e => {
+    e.preventDefault();
+    const nome = campo.value.trim().replace(/\s+/g, ' ');
+    if (!nome) { campo.focus(); return; }
+    try { localStorage.setItem(CH_CHI, nome); } catch (_) {}
+    chiudiFoglio();
+    avviso(`Ciao ${nome}!`);
+    if (dopo) setTimeout(dopo, 450);
+  };
+}
+$('mNome').onclick = () => { $('menu').hidden = true; chiediNome(false); };
+
+// ---------- Registro dei punti: chi, quando, per ogni carta, mese e anno ----------
+const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+const segnoPunti = n => (n > 0 ? '+' : n < 0 ? '−' : '') + numero(Math.abs(n));
+$('mRegistro').onclick = () => { $('menu').hidden = true; mostraRegistro(); };
+async function mostraRegistro() {
+  apriFoglio(`<h2>Registro punti</h2><p class="sotto">Sto caricando…</p>`);
+  if (!await nubeUsabile()) { apriFoglio(`<h2>Registro punti</h2><p class="sotto">Il registro è online: serve almeno una volta il collegamento a Internet.</p><div class="bottoni"><button class="btn primario" id="fFatto">Chiudi</button></div>`); $('fFatto').onclick = chiudiFoglio; return; }
+  const oggi = new Date();
+  const filtro = { carta: '', anno: String(oggi.getFullYear()), mese: '' };
+  let tutti = [];
+  const quando = m => { const t = m.ts?.toDate ? m.ts.toDate() : new Date(); return t; };
+  apriFoglio(`
+    <h2>Registro punti</h2>
+    <p class="sotto">Ogni carica e scarica, con chi l'ha fatta.</p>
+    <div class="filtri">
+      <select id="rCarta" aria-label="Carta"></select>
+      <select id="rAnno" aria-label="Anno"></select>
+      <select id="rMese" aria-label="Mese"></select>
+    </div>
+    <div id="rDentro"></div>
+    <div class="bottoni"><button class="btn primario" id="fFatto">Chiudi</button></div>`);
+  $('fFatto').onclick = chiudiFoglio;
+  const opzioni = (el, voci, scelto) => { el.innerHTML = voci.map(([v, t]) => `<option value="${esc(v)}"${v === scelto ? ' selected' : ''}>${esc(t)}</option>`).join(''); };
+  function filtri() {
+    const carteNomi = new Map();   // anche le carte che non ci sono più, finché hanno movimenti
+    for (const m of [...tutti].reverse()) carteNomi.set(m.carta, m.cartaNome || 'Carta');
+    for (const c of carte.values()) carteNomi.set(c.id, aspetto(c).nome);
+    opzioni($('rCarta'), [['', 'Tutte le carte'], ...[...carteNomi].sort((a, b) => a[1].localeCompare(b[1], 'it'))], filtro.carta);
+    const anni = new Set([String(oggi.getFullYear()), ...tutti.map(m => String(quando(m).getFullYear()))]);
+    opzioni($('rAnno'), [['', 'Tutti gli anni'], ...[...anni].sort((a, b) => b - a).map(a => [a, a])], filtro.anno);
+    opzioni($('rMese'), [['', 'Tutti i mesi'], ...MESI.map((m, i) => [String(i + 1), m[0].toUpperCase() + m.slice(1)])], filtro.mese);
+  }
+  function lista() {
+    const el = $('rDentro'); if (!el) return;
+    const righe = tutti.filter(m => {
+      const t = quando(m);
+      return (!filtro.carta || m.carta === filtro.carta) && (!filtro.anno || String(t.getFullYear()) === filtro.anno) && (!filtro.mese || String(t.getMonth() + 1) === filtro.mese);
+    });
+    if (!righe.length) { el.innerHTML = '<p class="sotto vuoto-reg">Nessun movimento con questi filtri.</p>'; return; }
+    const somma = r => ({ su: r.filter(m => m.tipo !== 'iniziale' && m.punti > 0).reduce((a, m) => a + m.punti, 0), giu: r.filter(m => m.tipo !== 'iniziale' && m.punti < 0).reduce((a, m) => a - m.punti, 0) });
+    const tot = somma(righe);
+    const saldo = filtro.carta && carte.get(filtro.carta) ? `<div><small>Saldo ora</small><b>${numero(carte.get(filtro.carta).punti)}</b></div>` : '';
+    let html = `<div class="riepilogo">${saldo}<div><small>Caricati</small><b class="pos">+${numero(tot.su)}</b></div><div><small>Scaricati</small><b class="neg">−${numero(tot.giu)}</b></div></div>`;
+    const mesi = new Map();
+    for (const m of righe) { const t = quando(m), k = t.getFullYear() * 100 + t.getMonth(); (mesi.get(k) || mesi.set(k, []).get(k)).push(m); }
+    for (const [k, r] of [...mesi].sort((a, b) => b[0] - a[0])) {
+      const s = somma(r);
+      html += `<div class="mese"><span>${MESI[k % 100]} ${Math.floor(k / 100)}</span><span><i class="pos">+${numero(s.su)}</i> <i class="neg">−${numero(s.giu)}</i></span></div>`;
+      html += r.map(m => {
+        const t = quando(m);
+        const data = t.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' · ' + t.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const iniz = m.tipo === 'iniziale';
+        return `<div class="mov">
+          <div class="mov-sx"><b>${filtro.carta ? esc(m.chi) : esc(m.cartaNome || 'Carta')}</b><small>${data}${filtro.carta ? '' : ' · ' + esc(m.chi)}</small></div>
+          <div class="mov-dx"><b class="${iniz ? '' : m.punti > 0 ? 'pos' : 'neg'}">${iniz ? numero(m.punti) : segnoPunti(m.punti)}</b><small>${iniz ? 'saldo iniziale' : 'saldo ' + numero(m.saldo)}</small></div>
+        </div>`;
+      }).join('');
+    }
+    el.innerHTML = html;
+  }
+  ['rCarta', 'rAnno', 'rMese'].forEach(id => $(id).onchange = () => { filtro.carta = $('rCarta').value; filtro.anno = $('rAnno').value; filtro.mese = $('rMese').value; lista(); });
+  filtri(); $('rDentro').innerHTML = '<p class="sotto vuoto-reg">Sto caricando…</p>';
+  const ferma = nube.ascoltaMovimenti(l => {
+    if (!$('rDentro')) { ferma(); return; }
+    if (l) { tutti = l; const a = [filtro.carta, filtro.anno, filtro.mese]; filtri(); lista(); }
+  });
+  fermaRegistro = ferma;
+}
+
 // ---------- Backup delle carte su file ----------
 $('mBackup').onclick = async () => {
   $('menu').hidden = true;
@@ -555,18 +723,20 @@ $('fileBackup').onchange = async e => {
     const d = JSON.parse(await f.text());
     const lista = (d.app === 'carte' && Array.isArray(d.carte)) ? d.carte : null;
     if (!lista) throw new Error('formato');
-    let nuove = 0;
+    let nuove = 0; const aggiunte = [];
     for (const c of lista) {
       if (!c || typeof c.codice !== 'string' || typeof c.svg !== 'string' || typeof c.formato !== 'string') continue;
       // La stessa carta (stesso codice) non si duplica: se c'è già, resta quella che hai sul telefono
       if ([...carte.values()].some(x => x.codice === c.codice)) continue;
-      const id = carte.has(c.id) ? nuovoId() : (c.id || nuovoId());
-      carte.set(id, { id, negozio: c.negozio || null, nome: String(c.nome || ''), codice: c.codice, formato: c.formato,
+      const id = idDa(c.codice);
+      const nuova = { id, negozio: c.negozio || null, nome: String(c.nome || ''), codice: c.codice, formato: c.formato,
                       svg: c.svg, punti: Number.isFinite(c.punti) ? Math.round(c.punti) : 0,
-                      uso: Number.isFinite(c.uso) ? c.uso : 0, fissa: Number.isFinite(c.fissa) ? c.fissa : 0, pos: Number.isFinite(c.pos) ? c.pos : undefined, ultimo: Number.isFinite(c.ultimo) ? c.ultimo : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove });
+                      uso: Number.isFinite(c.uso) ? c.uso : 0, fissa: Number.isFinite(c.fissa) ? c.fissa : 0, pos: Number.isFinite(c.pos) ? c.pos : undefined, ultimo: Number.isFinite(c.ultimo) ? c.ultimo : 0, ordine: Number.isFinite(c.ordine) ? c.ordine : Date.now() + nuove };
+      carte.set(id, nuova); aggiunte.push(nuova);
       nuove++;
     }
     salvaCarte();
+    aggiunte.forEach(c => inNube(c, true));
     avviso(nuove ? `Ripristinate ${nuove} ${nuove === 1 ? 'carta' : 'carte'}` : 'Nessuna carta nuova: ci sono già tutte');
   } catch (_) { avviso('Questo file non è un backup delle carte'); }
 };
@@ -589,7 +759,7 @@ function chiediElimina(id) {
   const a = aspetto(c);
   apriFoglio(`
     <h2>Eliminare «${esc(a.nome)}»?</h2>
-    <p class="sotto">La carta, il codice a barre e i punti vengono cancellati.</p>
+    <p class="sotto">La carta, il codice a barre e i punti vengono cancellati per tutta la famiglia. Il registro dei movimenti resta.</p>
     <div class="bottoni">
       <button class="btn rosso" id="fElimina">Elimina la carta</button>
       <button class="btn" id="fAnnulla">Annulla</button>
@@ -719,7 +889,7 @@ async function trovato(Z, r) {
   const doppia = [...carte.values()].find(c => c.codice === codice);
   if (doppia) { avviso('Questa carta c\'è già'); apriCarta(doppia.id); return; }
   // Si salva subito; poi si sceglie il negozio
-  const id = nuovoId();
+  const id = idDa(codice);
   aggiungiCarta({ id, negozio: null, nome: '', codice, formato, svg: out.svg, punti: 0, ordine: Date.now() });
   scegliNegozio(id, codice);
 }
@@ -764,7 +934,7 @@ async function preparaAggiornamento() {
     const jsUrl = [...indirizzi].find(u => /^app\.js\?v=/.test(u));
     if (jsUrl) {   // anche le immagini dei negozi citate nel nuovo app.js
       const js = await (await fetch(jsUrl)).text();
-      (js.match(/negozi\/[\w-]+\.png\?v=\d+/g) || []).forEach(u => indirizzi.add(u));
+      (js.match(/negozi\/[\w-]+\.png\?v=\d+|nube\.js\?v=\d+/g) || []).forEach(u => indirizzi.add(u));
     }
     for (const u of indirizzi) await fetch(u);
     localStorage.setItem('carte-preparata', nuova);
@@ -794,6 +964,7 @@ window.__carte = { carte, NEGOZI, aggiungiCarta };
 // ---------- Finestrina «App aggiornata» con la i per vedere cosa è cambiato ----------
 // A ogni pubblicazione si aggiunge qui una riga con il numero della versione e le novità (in italiano semplice).
 const NOVITA = {
+  25: 'Le carte sono online: le vedono e le usano tutti in famiglia. Ogni volta che carichi o scarichi punti, il saldo si aggiorna per tutti e resta scritto nel registro chi l\'ha fatto e quando (menu ⋯ → Registro punti).',
   24: 'Quando sposti una carta, le altre scivolano al loro posto senza tremare.',
   23: 'All\'avvio compare subito lo sfondo scuro, senza il bianco prima delle carte.',
   21: 'L\'app si apre subito anche dopo molte ore o giorni. Gli aggiornamenti arrivano in silenzio e si vedono alla prossima apertura.',
@@ -835,6 +1006,8 @@ function mostraAggiornamento() {
 
 leggiCarte();
 mostraAggiornamento();
+setTimeout(avviaNube, 200);                                       // le carte online si collegano dopo che l'app si è già mostrata
+if (!chi()) setTimeout(() => { if (!aperta) chiediNome(true); }, 700);   // ognuno scrive il suo nome una volta sola
 // Le carte sono pronte: si toglie la schermata scura, ma solo quando lo stile è arrivato (così non si vede mai niente «a metà»)
 function finitoAvvio() { document.getElementById('splash')?.remove(); registraTempi(); }
 const fogliostile = document.querySelector('link[rel="stylesheet"]');

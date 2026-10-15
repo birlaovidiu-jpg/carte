@@ -12,6 +12,14 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const u = new URL(req.url);
+  // Il collegamento online (Firebase): file con versione fissa, si salvano la prima volta e poi vengono dal telefono (serve per aprire anche senza Internet)
+  if (u.hostname === 'www.gstatic.com' && u.pathname.startsWith('/firebasejs/')) {
+    e.respondWith(caches.match(req, { cacheName: CACHE }).then(salvata => salvata || fetch(req).then(r => {
+      if (r.ok) { const copia = r.clone(); caches.open(CACHE).then(c => c.put(req, copia)); }
+      return r;
+    })));
+    return;
+  }
   if (u.origin !== location.origin) return;
   if (u.pathname.endsWith('versione.txt') || u.searchParams.has('x')) return;   // sempre da Internet
   const nav = req.mode === 'navigate';

@@ -1,0 +1,39 @@
+rules_version = '2';
+
+// Regole del database delle Carte di famiglia (progetto «carte-famiglia»).
+// Da incollare in Firebase → Firestore Database → Regole → Pubblica.
+//
+//  - chi apre l'app entra con un numero anonimo (nessuna password) e può leggere e usare le carte;
+//  - il REGISTRO dei punti (movimenti) si può solo aggiungere: nessuno può correggerlo o cancellarlo;
+//  - ogni movimento porta il nome di chi l'ha fatto e l'ora messa dal server (non falsificabile dal telefono).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function entrato() { return request.auth != null; }
+    function testo(x, min, max) { return x is string && x.size() >= min && x.size() <= max; }
+
+    match /carte/{id} {
+      allow read: if entrato();
+      allow create, update: if entrato()
+        && request.resource.data.punti is int && request.resource.data.punti >= 0
+        && testo(request.resource.data.codice, 1, 200)
+        && testo(request.resource.data.svg, 0, 20000)
+        && request.resource.data.get('nome', '') is string && request.resource.data.get('nome', '').size() <= 40;
+      allow delete: if entrato();
+    }
+
+    match /movimenti/{m} {
+      allow read: if entrato();
+      allow create: if entrato()
+        && request.resource.data.tipo in ['carica', 'scarica', 'iniziale']
+        && request.resource.data.punti is int
+        && request.resource.data.saldo is int
+        && testo(request.resource.data.chi, 1, 30)
+        && testo(request.resource.data.carta, 1, 60)
+        && testo(request.resource.data.cartaNome, 0, 60)
+        && request.resource.data.ts == request.time;
+      allow update, delete: if false;
+    }
+  }
+}
